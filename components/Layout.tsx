@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -15,8 +15,7 @@ import {
   Users,
   Truck,
   Scale,
-  UserCheck,
-  CarFront
+  UserCheck
 } from 'lucide-react';
 import { useSidebar } from '@/contexts/SidebarContext';
 
@@ -65,6 +64,11 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const { isSidebarOpen, setIsSidebarOpen } = useSidebar();
   const pathname = usePathname();
 
+  // Tự động scroll to top khi chuyển trang
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+
   const menuItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: <LayoutDashboard size={20} />, href: '/dashboard' },
     { id: 'inventory', label: 'Kho xe', icon: <Car size={20} />, href: '/inventory' },
@@ -87,17 +91,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           isSidebarOpen ? 'w-72 p-6' : 'w-20 p-3'
         } bg-[#0f172a] flex flex-col fixed top-0 left-0 h-screen z-[100] shadow-2xl transition-all duration-300 ease-in-out`}
       >
-        {/* New Logo Section based on the image provided */}
-        <div className={`flex items-center gap-4 mb-12 ${isSidebarOpen ? 'px-2' : 'justify-center'}`}>
-          <div className="relative flex items-center justify-center shrink-0">
-             <CarFront 
-               size={isSidebarOpen ? 36 : 28} 
-               className="text-[#00d26a]" 
-               strokeWidth={2}
-             />
-          </div>
+        {/* New Logo Section */}
+        <div className={`flex items-center justify-center mb-12 ${isSidebarOpen ? 'px-2' : ''}`}>
           {isSidebarOpen && (
-            <div className="animate-in fade-in slide-in-from-left-2 duration-500">
+            <div className="animate-in fade-in slide-in-from-left-2 duration-500 text-center">
               <h1 className="text-2xl font-black tracking-tighter text-white leading-none">GCM</h1>
               <p className="text-[8px] font-black text-[#00d26a] uppercase tracking-[0.2em] mt-1 whitespace-nowrap">All About Cars</p>
             </div>
@@ -126,6 +123,14 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <Settings size={20} />
             {isSidebarOpen && <span>Cấu hình</span>}
           </button>
+          {isSidebarOpen && (
+            <div className="mt-6 pt-6 border-t border-white/5 text-center">
+              <p className="text-xs text-slate-400 font-semibold mb-2">
+                Developed by <span className="text-slate-300">Trần Quang Khái</span>
+              </p>
+              <p className="text-xs text-slate-600 font-medium">Version 1.0</p>
+            </div>
+          )}
         </div>
       </aside>
 

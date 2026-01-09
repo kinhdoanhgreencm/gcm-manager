@@ -611,6 +611,7 @@ export const Inventory: React.FC = () => {
               const status = getStatusConfig(v.status);
               const rawData = vehiclesRawData.find(r => r.id === v.id);
               const version = rawData?.version;
+              const engineNumber = rawData?.engine_number;
               return (
                 <tr 
                   key={v.id} 
@@ -636,6 +637,12 @@ export const Inventory: React.FC = () => {
                         <h4 className="font-black text-slate-900">{v.make} {v.model} {version ? version : ''}</h4>
                         <div className="flex items-center gap-3 mt-1">
                           <p className="text-[10px] font-mono text-slate-400 font-bold tracking-tight uppercase">{v.vin}</p>
+                          {engineNumber && (
+                            <>
+                              <span className="text-[10px] text-slate-300">•</span>
+                              <p className="text-[10px] font-mono text-slate-400 font-bold tracking-tight uppercase">Số máy: {engineNumber}</p>
+                            </>
+                          )}
                           {v.color && (
                             <>
                               <span className="text-[10px] text-slate-300">•</span>

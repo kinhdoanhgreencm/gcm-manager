@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   Truck, Plus, Search, Filter, Building2, 
   MoreVertical, ChevronRight, Phone, Mail, 
@@ -11,13 +12,11 @@ import {
 } from 'lucide-react';
 import { MOCK_SUPPLIERS, MOCK_VEHICLES, MOCK_TRANSACTIONS } from '@/constants';
 import { Supplier, SupplierType, SupplierStatus, VehicleStatus, TransactionType } from '@/types';
-import { SupplierForm } from './SupplierForm';
 
 export const Suppliers: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'finance' | 'debt'>('overview');
-  const [showForm, setShowForm] = useState(false);
 
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -38,12 +37,6 @@ export const Suppliers: React.FC = () => {
     s.code.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSaveSupplier = (data: any) => {
-    // In actual app, update MOCK_SUPPLIERS or call API
-    console.log("Saving Supplier:", data);
-    setShowForm(false);
-    alert("Đã lưu nhà cung cấp mới thành công!");
-  };
 
   if (selectedSupplier) {
     const supplierVehicles = MOCK_VEHICLES.filter(v => v.supplierId === selectedSupplier.id);
@@ -312,8 +305,6 @@ export const Suppliers: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {showForm && <SupplierForm onClose={() => setShowForm(false)} onSave={handleSaveSupplier} />}
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
@@ -346,12 +337,12 @@ export const Suppliers: React.FC = () => {
         </div>
         
         <div className="flex gap-3">
-          <button 
-            onClick={() => setShowForm(true)}
+          <Link
+            href="/suppliers/new"
             className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-black text-sm shadow-lg shadow-blue-200 transition-all"
           >
             <Plus size={18} /> Thêm nhà cung cấp
-          </button>
+          </Link>
         </div>
       </div>
 

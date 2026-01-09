@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   ArrowUpRight, ArrowDownRight, Wallet, Filter, 
   Download, Plus, Receipt, History, PieChart as PieChartIcon,
@@ -10,13 +11,10 @@ import {
 import { MOCK_TRANSACTIONS, MOCK_ACCOUNTS } from '@/constants';
 import { TransactionType, TransactionCategory, TransactionStatus, Transaction } from '@/types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TransactionForm } from './TransactionForm';
 
 export const Finance: React.FC = () => {
+  const router = useRouter();
   const [activeView, setActiveView] = useState<'history' | 'cashflow'>('history');
-  const [showForm, setShowForm] = useState(false);
-  const [formType, setFormType] = useState<TransactionType>(TransactionType.INCOME);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
   
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -38,26 +36,15 @@ export const Finance: React.FC = () => {
   };
 
   const openForm = (type: TransactionType) => {
-    setFormType(type);
-    setSelectedTransaction(undefined);
-    setShowForm(true);
+    router.push(`/finance/new?type=${type}`);
   };
 
   const viewTransaction = (t: Transaction) => {
-    setSelectedTransaction(t);
-    setShowForm(true);
+    router.push(`/finance/new?type=${t.type}&transactionId=${t.id}`);
   };
 
   return (
     <div className="space-y-6">
-      {showForm && (
-        <TransactionForm 
-          onClose={() => setShowForm(false)} 
-          initialType={formType} 
-          existingTransaction={selectedTransaction} 
-        />
-      )}
-      
       {/* Account Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-1 bg-slate-900 text-white p-6 rounded-2xl shadow-xl flex flex-col justify-between overflow-hidden relative">

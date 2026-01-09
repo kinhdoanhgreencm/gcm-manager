@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   Plus, Search, Filter, UserCheck, 
   MoreVertical, ChevronRight, Phone, 
@@ -11,13 +12,11 @@ import {
 } from 'lucide-react';
 import { MOCK_STAFF, MOCK_SALES_CONTRACTS, MOCK_CUSTOMERS } from '@/constants';
 import { Staff, StaffRole, StaffStatus } from '@/types';
-import { StaffForm } from './StaffForm';
 
 export const StaffManagement: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'activities' | 'performance'>('overview');
-  const [showAddForm, setShowAddForm] = useState(false);
 
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -201,8 +200,6 @@ export const StaffManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {showAddForm && <StaffForm onClose={() => setShowAddForm(false)} onSave={() => {}} />}
-
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
@@ -234,12 +231,12 @@ export const StaffManagement: React.FC = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button 
-          onClick={() => setShowAddForm(true)}
+        <Link
+          href="/staff/new"
           className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-black text-sm shadow-lg shadow-blue-200 transition-all"
         >
           <Plus size={18} /> Thêm nhân sự
-        </button>
+        </Link>
       </div>
 
       {/* Staff Table */}

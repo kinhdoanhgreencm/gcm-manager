@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   FileText, Plus, Search, Filter, 
   User, Phone, Calendar, ShieldCheck, 
@@ -12,15 +14,11 @@ import {
 } from 'lucide-react';
 import { MOCK_DEPOSIT_CONTRACTS, MOCK_SALES_CONTRACTS, MOCK_VEHICLES, MOCK_TRANSACTIONS } from '@/constants';
 import { ContractStatus, DepositContract, SalesContract, TransactionCategory, TransactionType } from '@/types';
-import { TransactionForm } from './TransactionForm';
-import { ContractForm } from './ContractForm';
 
 export const Contracts: React.FC = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'deposit' | 'sales'>('sales');
   const [selectedContract, setSelectedContract] = useState<SalesContract | null>(null);
-  const [showReceiptForm, setShowReceiptForm] = useState(false);
-  const [showContractForm, setShowContractForm] = useState(false);
-  const [prefillData, setPrefillData] = useState<any>(null);
 
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -46,22 +44,18 @@ export const Contracts: React.FC = () => {
   ];
 
   const handleCreateReceipt = (contract: SalesContract, amount: number, milestone: string) => {
-    setPrefillData({
+    const prefillData = {
       referenceId: contract.id,
       referenceType: 'CONTRACT',
       amount: amount,
       category: TransactionCategory.CAR_SALE,
       description: `Thu tiền: ${milestone} - Hợp đồng ${contract.contractCode}`,
       customerName: contract.customerName
-    });
-    setShowReceiptForm(true);
+    };
+    const prefillParam = encodeURIComponent(JSON.stringify(prefillData));
+    router.push(`/finance/new?type=${TransactionType.INCOME}&prefill=${prefillParam}`);
   };
 
-  const handleSaveContractAndOpenReceipt = (prefill: any) => {
-    setPrefillData(prefill);
-    setShowContractForm(false);
-    setShowReceiptForm(true);
-  };
 
   if (selectedContract) {
     const vehicle = MOCK_VEHICLES.find(v => v.id === selectedContract.vehicleId);
@@ -70,8 +64,6 @@ export const Contracts: React.FC = () => {
 
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
-        {showReceiptForm && <TransactionForm onClose={() => setShowReceiptForm(false)} prefill={prefillData} initialType={TransactionType.INCOME} />}
-
         <button onClick={() => setSelectedContract(null)} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-black text-sm transition-colors bg-white/50 px-4 py-2 rounded-xl border border-slate-100 w-fit">
           <ArrowLeft size={18} /> QUAY LẠI DANH SÁCH
         </button>
@@ -219,9 +211,6 @@ export const Contracts: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {showReceiptForm && <TransactionForm onClose={() => setShowReceiptForm(false)} prefill={prefillData} initialType={TransactionType.INCOME} />}
-      {showContractForm && <ContractForm onClose={() => setShowContractForm(false)} onSaveAndCreateReceipt={handleSaveContractAndOpenReceipt} />}
-
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white/80 backdrop-blur-md p-6 rounded-[32px] border border-white shadow-xl shadow-slate-200/40">
         <div className="relative flex-1 w-full max-w-xl">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -233,12 +222,12 @@ export const Contracts: React.FC = () => {
         </div>
         
         <div className="flex gap-4 w-full md:w-auto">
-          <button 
-            onClick={() => setShowContractForm(true)}
+          <Link
+            href="/contracts/new"
             className="flex items-center gap-3 px-10 py-3.5 bg-[#00d26a] text-white rounded-2xl hover:bg-emerald-600 font-black text-sm shadow-2xl shadow-[#00d26a]/30 transition-all"
           >
             <Plus size={22} /> TẠO HỢP ĐỒNG MỚI
-          </button>
+          </Link>
         </div>
       </div>
 

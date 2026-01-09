@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   Plus, Search, Filter, User, Phone, 
   Mail, MapPin, MoreVertical, 
@@ -12,13 +13,11 @@ import {
 } from 'lucide-react';
 import { MOCK_CUSTOMERS, MOCK_SALES_CONTRACTS, MOCK_TRANSACTIONS } from '@/constants';
 import { Customer, CustomerType, CustomerStatus } from '@/types';
-import { CustomerForm } from './CustomerForm';
 
 export const CRM: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'contracts' | 'payments' | 'history'>('overview');
-  const [showAddForm, setShowAddForm] = useState(false);
 
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -37,12 +36,6 @@ export const CRM: React.FC = () => {
     }
   };
 
-  const handleSaveCustomer = (data: any) => {
-    // Trong thực tế sẽ gọi API hoặc cập nhật state tổng
-    console.log("Saving new customer:", data);
-    setShowAddForm(false);
-    alert(`Đã thêm khách hàng ${data.name} thành công!`);
-  };
 
   const filteredCustomers = MOCK_CUSTOMERS.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -267,7 +260,6 @@ export const CRM: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {showAddForm && <CustomerForm onClose={() => setShowAddForm(false)} onSave={handleSaveCustomer} />}
 
       {/* Quick CRM Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -300,12 +292,12 @@ export const CRM: React.FC = () => {
         </div>
         
         <div className="flex gap-3">
-          <button 
-            onClick={() => setShowAddForm(true)}
+          <Link
+            href="/crm/new"
             className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-black text-sm shadow-lg shadow-blue-200 transition-all"
           >
             <Plus size={18} /> Thêm khách hàng
-          </button>
+          </Link>
         </div>
       </div>
 
