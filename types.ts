@@ -15,6 +15,7 @@ export enum VehicleStatus {
 
 export interface Vehicle {
   id: string;
+  code?: string; // Mã xe theo format GCM-XXX
   vin: string;
   make: string;
   model: string;

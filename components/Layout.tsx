@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import React from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
@@ -16,10 +16,9 @@ import {
   Truck,
   Scale,
   UserCheck,
-  Menu,
-  ChevronLeft,
   CarFront
 } from 'lucide-react';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -63,7 +62,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, isCollap
 );
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { isSidebarOpen, setIsSidebarOpen } = useSidebar();
   const pathname = usePathname();
 
   const menuItems = [
@@ -86,7 +85,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       <aside 
         className={`${
           isSidebarOpen ? 'w-72 p-6' : 'w-20 p-3'
-        } bg-[#0f172a] flex flex-col fixed h-full z-[100] shadow-2xl transition-all duration-300 ease-in-out`}
+        } bg-[#0f172a] flex flex-col fixed top-0 left-0 h-screen z-[100] shadow-2xl transition-all duration-300 ease-in-out`}
       >
         {/* New Logo Section based on the image provided */}
         <div className={`flex items-center gap-4 mb-12 ${isSidebarOpen ? 'px-2' : 'justify-center'}`}>
@@ -135,43 +134,17 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           isSidebarOpen ? 'ml-72' : 'ml-20'
         } p-10 relative transition-all duration-300 ease-in-out`}
       >
-        <header className="flex justify-between items-center mb-10">
-          <div className="flex items-center gap-6">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-[#00d26a] hover:border-[#00d26a]/30 transition-all shadow-sm group"
-            >
-              {isSidebarOpen ? <ChevronLeft size={24} className="group-hover:-translate-x-0.5 transition-transform" /> : <Menu size={24} className="group-hover:scale-110 transition-transform" />}
-            </button>
-            <div>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                {menuItems.find(i => i.id === activeTab)?.label}
-              </h2>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-2 h-2 rounded-full bg-[#00d26a] animate-pulse"></div>
-                <p className="text-slate-500 text-sm font-semibold">Kết nối VinFast V-Hub ổn định</p>
-              </div>
+        <div className="mb-10">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+              {menuItems.find(i => i.id === activeTab)?.label}
+            </h2>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 rounded-full bg-[#00d26a] animate-pulse"></div>
+              <p className="text-slate-500 text-sm font-semibold">Hiểu xe – Hiểu thị trường – Hiểu khách hàng.</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-6">
-             <div className="hidden xl:flex bg-white border border-slate-200 rounded-2xl px-5 py-3 items-center gap-3 shadow-sm">
-               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Showroom:</span>
-               <span className="text-sm font-bold text-slate-900">GCM Miền Nam</span>
-             </div>
-             <div className="flex items-center gap-3 bg-white p-1.5 pr-5 rounded-2xl border border-slate-200 shadow-sm">
-               <img 
-                 src="https://picsum.photos/seed/vinfast/48/48" 
-                 className="w-10 h-10 rounded-xl shadow-inner"
-                 alt="User"
-               />
-               <div className="hidden sm:block text-left">
-                 <p className="text-xs font-black text-slate-900 leading-none">Sử Duy Linh</p>
-                 <p className="text-[10px] font-bold text-[#00d26a] uppercase mt-1">Tổng Giám Đốc</p>
-               </div>
-             </div>
-          </div>
-        </header>
+        </div>
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           {children}

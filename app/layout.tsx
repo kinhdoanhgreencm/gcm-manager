@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { ConditionalHeader } from '@/components/ConditionalHeader'
+import { SidebarProvider } from '@/contexts/SidebarContext'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,10 +20,15 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={inter.className}>
-        <div className="app-bg">
-          <div className="grid-pattern"></div>
-        </div>
-        {children}
+        <AuthProvider>
+          <SidebarProvider>
+            <div className="app-bg">
+              <div className="grid-pattern"></div>
+            </div>
+            <ConditionalHeader />
+            {children}
+          </SidebarProvider>
+        </AuthProvider>
       </body>
     </html>
   )

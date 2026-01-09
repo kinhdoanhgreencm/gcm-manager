@@ -173,7 +173,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({ onClose, onSave }) => 
                  <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
                    <Zap size={18} />
                  </div>
-                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">2. Tình trạng Pin VinFast</h3>
+                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">3. Tình trạng Pin VinFast</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50/20 p-8 rounded-[32px] border border-amber-100">
