@@ -1,0 +1,7 @@
+{
+  "name": "GCM-Manager",
+  "description": "A comprehensive automobile business management system for small to medium dealerships, featuring inventory tracking, financial control, and contract management.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
