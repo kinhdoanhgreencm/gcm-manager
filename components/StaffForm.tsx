@@ -8,7 +8,7 @@ import {
   CheckCircle2, Info, LayoutDashboard,
   ShieldAlert, Settings, FileText, Wallet
 } from 'lucide-react';
-import { Staff, StaffRole, StaffStatus } from '@/types';
+import { Staff, StaffRole, StaffStatus, StaffPermissions } from '@/types';
 
 interface StaffFormProps {
   onClose: () => void;
@@ -46,7 +46,7 @@ export const StaffForm: React.FC<StaffFormProps> = ({ onClose, onSave, existingS
     });
   };
 
-  const togglePermission = (key: keyof typeof formData.permissions) => {
+  const togglePermission = (key: keyof StaffPermissions) => {
     if (!formData.permissions) return;
     setFormData({
       ...formData,
@@ -218,19 +218,19 @@ export const StaffForm: React.FC<StaffFormProps> = ({ onClose, onSave, existingS
                   <ShieldCheck size={18} className="text-emerald-600" /> D. Phân quyền nghiệp vụ
                 </h3>
                 <div className="grid grid-cols-1 gap-3">
-                   {[
-                     { key: 'canManageContract', label: 'Quản lý hợp đồng (Tạo/Sửa)', icon: <FileText size={16} /> },
-                     { key: 'canApproveFinance', label: 'Duyệt thu chi & Tài chính', icon: <Wallet size={16} /> },
-                     { key: 'canViewReports', label: 'Xem báo cáo doanh nghiệp', icon: <LayoutDashboard size={16} /> },
-                     { key: 'canManageInventory', label: 'Quản lý kho xe', icon: <Settings size={16} /> },
-                     { key: 'canManageStaff', label: 'Quản trị nhân sự', icon: <ShieldAlert size={16} /> },
-                   ].map(item => (
+                   {([
+                     { key: 'canManageContract' as keyof StaffPermissions, label: 'Quản lý hợp đồng (Tạo/Sửa)', icon: <FileText size={16} /> },
+                     { key: 'canApproveFinance' as keyof StaffPermissions, label: 'Duyệt thu chi & Tài chính', icon: <Wallet size={16} /> },
+                     { key: 'canViewReports' as keyof StaffPermissions, label: 'Xem báo cáo doanh nghiệp', icon: <LayoutDashboard size={16} /> },
+                     { key: 'canManageInventory' as keyof StaffPermissions, label: 'Quản lý kho xe', icon: <Settings size={16} /> },
+                     { key: 'canManageStaff' as keyof StaffPermissions, label: 'Quản trị nhân sự', icon: <ShieldAlert size={16} /> },
+                   ] as const).map(item => (
                      <button
                         key={item.key}
                         type="button"
-                        onClick={() => togglePermission(item.key as any)}
+                        onClick={() => togglePermission(item.key)}
                         className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                          formData.permissions?.[item.key as keyof typeof formData.permissions] 
+                          formData.permissions?.[item.key] 
                             ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
                             : 'bg-white border-slate-200 text-slate-500'
                         }`}
@@ -240,11 +240,11 @@ export const StaffForm: React.FC<StaffFormProps> = ({ onClose, onSave, existingS
                            <span className="text-xs font-bold">{item.label}</span>
                         </div>
                         <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${
-                          formData.permissions?.[item.key as keyof typeof formData.permissions]
+                          formData.permissions?.[item.key]
                             ? 'bg-emerald-500 border-emerald-500 text-white'
                             : 'bg-white border-slate-300'
                         }`}>
-                           {formData.permissions?.[item.key as keyof typeof formData.permissions] && <CheckCircle2 size={14} />}
+                           {formData.permissions?.[item.key] && <CheckCircle2 size={14} />}
                         </div>
                      </button>
                    ))}

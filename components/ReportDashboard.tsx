@@ -136,7 +136,7 @@ export const ReportDashboard: React.FC = () => {
                   <YAxis axisLine={false} tickLine={false} fontSize={10} fontWeight="900" />
                   <Tooltip 
                     contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 30px -5px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: number) => [formatVND(value), 'Lợi nhuận']}
+                    formatter={(value: number | undefined) => [formatVND(value ?? 0), 'Lợi nhuận']}
                   />
                   <Bar dataKey="profit" fill="#00d26a" radius={[10, 10, 0, 0]} barSize={45} />
                 </BarChart>
