@@ -24,6 +24,8 @@ export const CustomerFormPage: React.FC = () => {
     phone: '',
     email: '',
     address: '',
+    dateOfBirth: '',
+    gender: '',
     idCard: '',
     idCardIssueDate: '',
     idCardIssuePlace: '',
@@ -182,6 +184,40 @@ export const CustomerFormPage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {!isCorporate && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngày tháng năm sinh</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                      <input 
+                        type="date" 
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
+                        value={formData.dateOfBirth}
+                        onChange={e => setFormData({...formData, dateOfBirth: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giới tính</label>
+                    <div className="relative">
+                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                      <select 
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 appearance-none"
+                        value={formData.gender}
+                        onChange={e => setFormData({...formData, gender: e.target.value})}
+                      >
+                        <option value="">-- Chọn giới tính --</option>
+                        <option value="Nam">Nam</option>
+                        <option value="Nữ">Nữ</option>
+                        <option value="Khác">Khác</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 

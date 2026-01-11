@@ -547,8 +547,8 @@ export const Inventory: React.FC = () => {
           { 
             label: 'Giá trị tồn kho', 
             value: vehicles.length > 0 
-              ? `${(vehicles.reduce((sum, v) => sum + v.price, 0) / 1000000000).toLocaleString('vi-VN')} tỷ`
-              : '0 tỷ', 
+              ? `${vehicles.reduce((sum, v) => sum + v.price, 0).toLocaleString('vi-VN')} đ`
+              : '0 đ', 
             color: 'text-slate-900' 
           },
         ].map((stat, i) => (
