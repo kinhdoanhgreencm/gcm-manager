@@ -8,7 +8,7 @@ export const MOCK_STAFF: Staff[] = [
     name: 'Trần Văn Quản Lý',
     phone: '0901234567',
     email: 'quanly@gcm.vn',
-    role: StaffRole.MANAGER,
+    role: StaffRole.STRATEGIC_DIRECTOR,
     branch: 'GCM-Tổng',
     status: StaffStatus.ACTIVE,
     joinDate: '2020-01-01',
@@ -19,7 +19,7 @@ export const MOCK_STAFF: Staff[] = [
       canViewReports: true,
       canManageInventory: true,
       canManageStaff: true
-    },
+    } as any,
     totalContracts: 0,
     totalRevenue: 0
   },
@@ -29,7 +29,7 @@ export const MOCK_STAFF: Staff[] = [
     name: 'Nguyễn Thị Sale',
     phone: '0988888999',
     email: 'salen@gcm.vn',
-    role: StaffRole.SALES,
+    role: StaffRole.SALES_CONSULTANT,
     branch: 'GCM-Tổng',
     status: StaffStatus.ACTIVE,
     joinDate: '2023-06-15',
@@ -40,7 +40,7 @@ export const MOCK_STAFF: Staff[] = [
       canViewReports: false,
       canManageInventory: false,
       canManageStaff: false
-    },
+    } as any,
     totalContracts: 15,
     totalRevenue: 12500000000
   },
@@ -61,7 +61,7 @@ export const MOCK_STAFF: Staff[] = [
       canViewReports: true,
       canManageInventory: false,
       canManageStaff: false
-    }
+    } as any
   }
 ];
 

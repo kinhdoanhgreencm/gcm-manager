@@ -1,28 +1,50 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Scale, ArrowUpRight, ArrowDownRight, 
   Search, Filter, Calendar, History,
   CheckCircle2, AlertCircle, Clock,
   MoreVertical, Eye, Receipt, Plus,
   Users, Truck, FileText, ChevronRight,
-  ShieldCheck, DollarSign
+  ShieldCheck, DollarSign, Loader2
 } from 'lucide-react';
-import { MOCK_DEBTS } from '@/constants';
 import { DebtRecord, DebtType, DebtStatus, TransactionType, TransactionCategory } from '@/types';
-import { TransactionForm } from './TransactionForm';
+import { useAuth } from '@/contexts/AuthContext';
+import { useReload } from '@/contexts/ReloadContext';
+import { hasAnyPermission, PermissionCategories } from '@/utils/permissions';
+import { AccessDenied } from './AccessDenied';
 
 export const DebtManagement: React.FC = () => {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { reloadKey } = useReload();
   const [activeTab, setActiveTab] = useState<DebtType>(DebtType.RECEIVABLE);
   const [search, setSearch] = useState('');
   const [selectedDebt, setSelectedDebt] = useState<DebtRecord | null>(null);
-  const [showReceiptForm, setShowReceiptForm] = useState(false);
-  const [prefillData, setPrefillData] = useState<any>(null);
+  const [debts, setDebts] = useState<DebtRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingTransactions, setPendingTransactions] = useState<Map<string, boolean>>(new Map());
+
+  // Chỉ Giám đốc vận hành, Giám đốc và Admin mới được truy cập trang quản lý công nợ
+  const allowedRoles = ['OPERATIONS_DIRECTOR', 'DIRECTOR', 'ADMIN'];
+  
+  if (!user || !allowedRoles.includes(user.role || '')) {
+    return (
+      <AccessDenied 
+        message="Chỉ Giám đốc vận hành, Giám đốc và Quản trị viên mới được phép truy cập trang quản lý công nợ."
+        redirectTo="/dashboard"
+        icon="alert"
+      />
+    );
+  }
 
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
+
 
   const getStatusBadge = (status: DebtStatus) => {
     switch(status) {
@@ -37,53 +59,182 @@ export const DebtManagement: React.FC = () => {
     }
   };
 
-  const filteredDebts = MOCK_DEBTS.filter(d => 
+  // Fetch tất cả công nợ
+  const fetchDebts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/debts', { cache: 'no-store' });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || 'Có lỗi xảy ra khi tải dữ liệu công nợ');
+      }
+
+      setDebts(result?.debts || []);
+
+      const pendingMap = new Map<string, boolean>(
+        Object.entries(result?.pendingTransactions || {}).map(([key, value]) => [key, Boolean(value)])
+      );
+      setPendingTransactions(pendingMap);
+    } catch (err: any) {
+      console.error('Error fetching debts:', err);
+      setError(err.message || 'Có lỗi xảy ra khi tải dữ liệu công nợ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDebts();
+  }, [reloadKey]); // Re-fetch when reloadKey changes
+
+
+  const filteredDebts = debts.filter(d => 
     d.type === activeTab && 
-    (d.partnerName.toLowerCase().includes(search.toLowerCase()) || d.referenceCode.includes(search))
+    (d.partnerName.toLowerCase().includes(search.toLowerCase()) || 
+     d.referenceCode.toLowerCase().includes(search.toLowerCase()) ||
+     d.partnerCode.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const totalReceivable = MOCK_DEBTS
+  const totalReceivable = debts
     .filter(d => d.type === DebtType.RECEIVABLE)
     .reduce((sum, d) => sum + d.remainingAmount, 0);
 
-  const totalPayable = MOCK_DEBTS
+  const totalPayable = debts
     .filter(d => d.type === DebtType.PAYABLE)
     .reduce((sum, d) => sum + d.remainingAmount, 0);
 
-  const overdueAmount = MOCK_DEBTS
+  const overdueAmount = debts
     .filter(d => d.status === DebtStatus.OVERDUE)
     .reduce((sum, d) => sum + d.remainingAmount, 0);
 
-  const handleCreatePayment = (debt: DebtRecord) => {
+  // Tính dự chi tuần tới (các khoản đến hạn trong 7 ngày tới)
+  const upcomingDueAmount = debts
+    .filter(d => {
+      if (!d.dueDate || d.remainingAmount <= 0) return false;
+      const due = new Date(d.dueDate.split('/').reverse().join('-'));
+      const today = new Date();
+      const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays <= 7;
+    })
+    .reduce((sum, d) => sum + d.remainingAmount, 0);
+
+  const handleCreatePayment = async (debt: DebtRecord) => {
     const isReceivable = debt.type === DebtType.RECEIVABLE;
-    setPrefillData({
+    
+    // Nếu là công nợ phải thu từ hợp đồng, tìm payment schedule chưa thanh toán để liên kết
+    let milestoneName = '';
+    if (isReceivable && debt.referenceId) {
+      try {
+        const response = await fetch(`/api/debts/payment-schedule?contractId=${debt.referenceId}`, { cache: 'no-store' });
+        const result = await response.json();
+
+        if (response.ok && result?.schedule) {
+          milestoneName = result.schedule.milestone_name || '';
+          const scheduleAmount = Number(result.schedule.amount || 0);
+          const prefillData = {
+            referenceId: debt.referenceId,
+            referenceType: 'CONTRACT',
+            amount: scheduleAmount > 0 ? scheduleAmount : debt.remainingAmount,
+            category: TransactionCategory.CAR_SALE,
+            description: `Thu tiền: ${milestoneName} - Hợp đồng mua bán xe - Khách hàng ${debt.partnerName}`,
+            customerName: debt.partnerName
+          };
+          const prefillParam = encodeURIComponent(JSON.stringify(prefillData));
+          router.push(`/finance/new?type=INCOME&prefill=${prefillParam}`);
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching payment schedule:', error);
+      }
+    }
+    
+    // Fallback: Tạo phiếu thu với thông tin cơ bản
+    const prefillData = {
       referenceId: debt.referenceId,
       referenceType: isReceivable ? 'CONTRACT' : 'SUPPLIER',
       amount: debt.remainingAmount,
       category: isReceivable ? TransactionCategory.CAR_SALE : TransactionCategory.INVENTORY_PURCHASE,
       description: `${isReceivable ? 'Thu tiền' : 'Chi tiền'} công nợ: ${debt.partnerName} - ${debt.referenceCode}`,
       customerName: debt.partnerName
-    });
-    setShowReceiptForm(true);
+    };
+    const prefillParam = encodeURIComponent(JSON.stringify(prefillData));
+    const transactionType = isReceivable ? TransactionType.INCOME : TransactionType.EXPENSE;
+    router.push(`/finance/new?type=${transactionType}&prefill=${prefillParam}`);
   };
+
+  const handleViewDetails = (debt: DebtRecord) => {
+    // Navigate to the related detail page based on debt type
+    if (debt.type === DebtType.RECEIVABLE) {
+      // For receivable debts (from contracts), navigate to contract detail page
+      router.push(`/contracts/${debt.referenceId}`);
+    } else {
+      // For payable debts (from suppliers), navigate to suppliers page with supplier ID in query
+      router.push(`/suppliers?supplierId=${debt.partnerId}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 text-[#00d26a] animate-spin mx-auto" />
+          <p className="text-sm font-medium text-slate-600">Đang tải dữ liệu công nợ...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-[32px] p-6 flex items-start gap-4">
+          <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={24} />
+          <div className="flex-1">
+            <h3 className="text-lg font-black text-red-900 mb-2">Lỗi tải dữ liệu</h3>
+            <p className="text-sm text-red-700 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors"
+            >
+              Thử lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has any debt management permissions
+  const hasDebtPermissions = hasAnyPermission(user?.permissions, PermissionCategories.debt);
+  const canCreateDebt = hasAnyPermission(user?.permissions, ['debtManagementCreate']);
+
+  // If user doesn't have any debt management permissions, show access denied message
+  if (!hasDebtPermissions) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="bg-white/80 backdrop-blur-md rounded-[40px] border border-white p-20 text-center shadow-xl max-w-md">
+          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldCheck size={40} className="text-slate-300" />
+          </div>
+          <h3 className="text-xl font-black text-slate-900 mb-2">Không có quyền truy cập</h3>
+          <p className="text-slate-500 font-bold">Bạn không có quyền xem quản lý công nợ. Vui lòng liên hệ quản trị viên để được cấp quyền.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {showReceiptForm && (
-        <TransactionForm 
-          onClose={() => setShowReceiptForm(false)} 
-          prefill={prefillData} 
-          initialType={activeTab === DebtType.RECEIVABLE ? TransactionType.INCOME : TransactionType.EXPENSE} 
-        />
-      )}
-
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
           { label: 'Phải thu khách hàng', value: totalReceivable, icon: <ArrowDownRight className="text-emerald-500" />, color: 'text-emerald-600' },
           { label: 'Phải trả đối tác', value: totalPayable, icon: <ArrowUpRight className="text-rose-500" />, color: 'text-rose-600' },
           { label: 'Tổng quá hạn', value: overdueAmount, icon: <AlertCircle className="text-rose-500" />, color: 'text-rose-700' },
-          { label: 'Dự chi (Tuần tới)', value: 450000000, icon: <Clock className="text-amber-500" />, color: 'text-amber-600' },
+          { label: 'Dự chi (Tuần tới)', value: upcomingDueAmount, icon: <Clock className="text-amber-500" />, color: 'text-amber-600' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-1">
@@ -149,6 +300,14 @@ export const DebtManagement: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredDebts.map(debt => {
                 const status = getStatusBadge(debt.status);
+                const isOverdue = debt.status === DebtStatus.OVERDUE;
+                const daysOverdue = isOverdue && debt.dueDate ? (() => {
+                  const due = new Date(debt.dueDate.split('/').reverse().join('-'));
+                  const today = new Date();
+                  const diffTime = today.getTime() - due.getTime();
+                  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                })() : 0;
+
                 return (
                   <tr key={debt.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-5">
@@ -159,7 +318,9 @@ export const DebtManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-5">
                        <p className="text-sm font-bold text-slate-900 leading-none">{debt.partnerName}</p>
-                       <p className="text-[10px] text-slate-500 font-bold uppercase mt-1.5 tracking-tighter">{debt.partnerCode}</p>
+                       {debt.partnerCode && (
+                         <p className="text-[10px] text-slate-500 font-bold uppercase mt-1.5 tracking-tighter">{debt.partnerCode}</p>
+                       )}
                     </td>
                     <td className="px-6 py-5 text-right font-medium text-slate-400 text-sm">
                        {formatVND(debt.totalAmount)}
@@ -173,9 +334,9 @@ export const DebtManagement: React.FC = () => {
                        </p>
                     </td>
                     <td className="px-6 py-5 text-center">
-                       <p className="text-xs font-black text-slate-700">{debt.dueDate}</p>
-                       {debt.status === DebtStatus.OVERDUE && (
-                         <p className="text-[9px] font-bold text-rose-500 uppercase mt-0.5 animate-pulse">Trễ 3 ngày</p>
+                       <p className="text-xs font-black text-slate-700">{debt.dueDate || 'N/A'}</p>
+                       {isOverdue && daysOverdue > 0 && (
+                         <p className="text-[9px] font-bold text-rose-500 uppercase mt-0.5 animate-pulse">Trễ {daysOverdue} ngày</p>
                        )}
                     </td>
                     <td className="px-6 py-5 text-center">
@@ -186,19 +347,33 @@ export const DebtManagement: React.FC = () => {
                     <td className="px-6 py-5 text-center">
                        <div className="flex items-center justify-center gap-2">
                           {debt.remainingAmount > 0 && (
-                            <button 
-                              onClick={() => handleCreatePayment(debt)}
-                              className={`p-2 rounded-xl transition-all shadow-sm ${
-                                debt.type === DebtType.RECEIVABLE 
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                  : 'bg-rose-600 text-white hover:bg-rose-700'
-                              }`}
-                              title={debt.type === DebtType.RECEIVABLE ? "Thu tiền" : "Chi tiền"}
-                            >
-                               <Receipt size={16} />
-                            </button>
+                            (() => {
+                              const hasPending = debt.type === DebtType.PAYABLE ? pendingTransactions.get(debt.partnerId) : false;
+                              return hasPending ? (
+                                <button 
+                                  disabled
+                                  className="p-2 rounded-xl transition-all shadow-sm bg-slate-300 text-slate-500 cursor-not-allowed"
+                                  title="Đã tạo phiếu chi, đang chờ duyệt"
+                                >
+                                  <Receipt size={16} />
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => handleCreatePayment(debt)}
+                                  className={`p-2 rounded-xl transition-all shadow-sm ${
+                                    debt.type === DebtType.RECEIVABLE 
+                                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                      : 'bg-rose-600 text-white hover:bg-rose-700'
+                                  }`}
+                                  title={debt.type === DebtType.RECEIVABLE ? "Thu tiền" : "Chi tiền"}
+                                >
+                                  <Receipt size={16} />
+                                </button>
+                              );
+                            })()
                           )}
                           <button 
+                            onClick={() => handleViewDetails(debt)}
                             className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
                             title="Xem chi tiết biến động"
                           >

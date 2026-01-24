@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 body { 
   font-family: 'Inter', sans-serif; 
   background-color: #f1f5f9;
@@ -37,3 +42,561 @@ body {
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+/* Custom scrollbar cho permissions list */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive utilities for iPad and tablet */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* iPad portrait and landscape specific styles */
+  .tablet-padding {
+    padding: 1rem 1.5rem;
+  }
+}
+
+/* Touch-friendly tap targets for iPad */
+@media (hover: none) and (pointer: coarse) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* CSS cho in ấn hợp đồng */
+/* CSS cho in ấn hợp đồng */
+@media print {
+  @page {
+    size: A4;
+    /* Căn lề theo Nghị định 30/2020/NĐ-CP */
+    margin-top: 22.5mm;    /* 20-25mm, chọn 22.5mm */
+    margin-bottom: 22.5mm; /* 20-25mm, chọn 22.5mm */
+    margin-left: 32.5mm;   /* 30-35mm, chọn 32.5mm */
+    margin-right: 17.5mm;  /* 15-20mm, chọn 17.5mm */
+  }
+
+  body {
+    font-family: 'Times New Roman', serif !important;
+    background: white !important;
+    color: black !important;
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+    font-size: 14px;
+  }
+
+  .print-container {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page-container {
+    page-break-after: always;
+    width: 100%;
+    min-height: 29.7cm;
+    max-height: 29.7cm;
+    box-sizing: border-box;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .page-container:last-child {
+    page-break-after: auto;
+  }
+
+  /* Page break indicators for web view */
+  .page-break-indicator {
+    display: block;
+    page-break-before: always;
+  }
+
+  /* A4 Page styling - theo Nghị định 30/2020/NĐ-CP */
+  .a4-page {
+    width: 210mm;
+    min-height: 297mm;
+    /* Padding = margin của @page để đảm bảo căn lề đúng */
+    padding: 22.5mm 17.5mm 22.5mm 32.5mm; /* top right bottom left */
+    margin: 0 auto;
+    background: white;
+    font-family: 'Times New Roman', serif !important;
+    font-size: 14px !important; /* Nội dung: 13 hoặc 14 - tăng lên 14px để giảm số trang */
+    line-height: 1.4; /* Dãn dòng: 1.3-1.5 lines, chọn 1.4 */
+    position: relative;
+  }
+
+  .contract-template * {
+    color: black !important;
+    background: white !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  /* Typography - theo Nghị định 30/2020/NĐ-CP */
+  .contract-text p {
+    text-align: justify; /* Căn đều 2 bên */
+    text-justify: inter-word;
+    margin-top: 6pt;     /* Khoảng cách đoạn trước: 6pt */
+    margin-bottom: 6pt;  /* Khoảng cách đoạn sau: 6pt */
+    line-height: 1.4;    /* Dãn dòng: 1.3-1.5 lines */
+  }
+  
+  /* Đảm bảo các tiêu đề h3 căn lề đầu dòng giống với các đoạn văn */
+  .contract-text h3 {
+    text-indent: 0 !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+  
+  /* Đảm bảo các đoạn văn trong div.space-y-1 cũng không có text-indent để căn lề giống h3 */
+  .contract-text .space-y-1 > p {
+    text-indent: 0;
+  }
+  
+  /* Giảm khoảng cách cho các phần tử trong space-y để tối ưu không gian */
+  .contract-template .space-y-0\.5 > * + * { margin-top: 2pt; }
+  .contract-template .space-y-1 > * + * { margin-top: 4pt; }
+  .contract-template .space-y-2 > * + * { margin-top: 6pt; }
+  .contract-template .space-y-4 > * + * { margin-top: 8pt; }
+  
+  /* Giảm margin cho các phần tử */
+  .contract-template .mt-0\.5 { margin-top: 2pt; }
+  .contract-template .mt-1 { margin-top: 4pt; }
+  .contract-template .mt-2 { margin-top: 6pt; }
+  .contract-template .mt-4 { margin-top: 8pt; }
+  .contract-template .mb-1 { margin-bottom: 4pt; }
+  .contract-template .mb-2 { margin-bottom: 6pt; }
+  .contract-template .mb-3 { margin-bottom: 8pt; }
+  .contract-template .mb-6 { margin-bottom: 12pt; }
+
+  .contract-text .indent-8 {
+    text-indent: 4em;
+  }
+
+  .contract-text .leading-relaxed {
+    line-height: 1.6;
+  }
+
+  /* Tables */
+  .contract-template table {
+    page-break-inside: avoid;
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+  }
+
+  .contract-template th,
+  .contract-template td {
+    border: 1px solid #000;
+    padding: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .contract-template th {
+    background-color: #f5f5f5 !important;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  /* Headings */
+  .contract-template h1,
+  .contract-template h2,
+  .contract-template h3,
+  .contract-template h4,
+  .contract-template h5 {
+    page-break-after: avoid;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+    line-height: 1.3;
+  }
+
+  /* Headings - theo Nghị định 30/2020/NĐ-CP */
+  .contract-template h1 { 
+    font-size: 15px; /* Tên hợp đồng: 14-16, chọn 15px */
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .contract-template h2 { 
+    font-size: 15px; /* Tên hợp đồng: 14-16, chọn 15px */
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .contract-template h3 { font-size: 14px; }
+  .contract-template h4 { font-size: 14px; }
+  .contract-template h5 { font-size: 13px; }
+  
+  /* Chú thích: 12-13 */
+  .contract-template .text-sm,
+  .contract-template .text-xs,
+  .contract-template .italic {
+    font-size: 12.5px; /* Chú thích: 12-13, chọn 12.5px */
+  }
+
+  /* Lists and spacing */
+  .contract-template .space-y-1 > * + * { margin-top: 0.25rem; }
+  .contract-template .space-y-2 > * + * { margin-top: 0.5rem; }
+  .contract-template .space-y-3 > * + * { margin-top: 0.75rem; }
+
+  .contract-template .mb-1 { margin-bottom: 0.25rem; }
+  .contract-template .mb-2 { margin-bottom: 0.5rem; }
+  .contract-template .mb-3 { margin-bottom: 0.75rem; }
+  .contract-template .mb-4 { margin-bottom: 1rem; }
+  .contract-template .mb-6 { margin-bottom: 1.5rem; }
+
+  .contract-template .ml-4 { margin-left: 1rem; }
+
+  /* Borders and backgrounds */
+  .contract-template .border { border: 1px solid #d1d5db; }
+  .contract-template .border-gray-300 { border-color: #d1d5db; }
+  .contract-template .border-gray-400 { border-color: #9ca3af; }
+  .contract-template .border-t { border-top: 1px solid #d1d5db; }
+  .contract-template .border-t-2 { border-top: 2px solid #000; }
+  .contract-template .border-l-4 { border-left: 4px solid #3b82f6; }
+
+  .contract-template .bg-gray-50 { background-color: #f9fafb !important; }
+  .contract-template .bg-gray-100 { background-color: #f3f4f6 !important; }
+
+  /* Text colors */
+  .contract-template .text-blue-600 { color: #2563eb !important; }
+  .contract-template .text-green-600 { color: #16a34a !important; }
+  .contract-template .text-red-600 { color: #dc2626 !important; }
+  .contract-template .text-gray-600 { color: #4b5563 !important; }
+  .contract-template .text-gray-500 { color: #6b7280 !important; }
+
+  /* Font weights */
+  .contract-template .font-bold { font-weight: bold; }
+  .contract-template .font-semibold { font-weight: 600; }
+
+  /* Text alignment */
+  .contract-template .text-center { text-align: center; }
+  .contract-template .text-justify { text-align: justify; }
+
+  /* Hide elements */
+  button, .no-print {
+    display: none !important;
+  }
+
+  /* Page breaks */
+  .print-break {
+    page-break-before: always;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  /* Page shadow for web view */
+  .page-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Page break indicators */
+  .page-break-indicator {
+    margin: 2rem 0;
+    page-break-before: always;
+  }
+
+  .page-break-indicator > div {
+    background: white;
+    border-radius: 4px;
+    padding: 1rem;
+  }
+
+  /* Print styles */
+  @media print {
+    .contract-template {
+      background: white !important;
+      padding: 0 !important;
+    }
+
+    .a4-page {
+      page-break-after: always;
+      margin: 0 !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
+      /* Padding theo Nghị định 30/2020/NĐ-CP */
+      padding: 22.5mm 17.5mm 22.5mm 32.5mm !important; /* top right bottom left */
+      box-shadow: none !important;
+      border: none !important;
+    }
+
+    .a4-page:last-child {
+      page-break-after: auto;
+    }
+  }
+
+  /* Web view styles */
+  @media screen {
+    .a4-page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 1rem auto;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      background: white;
+      border: 1px solid #e5e7eb;
+    }
+
+    .contract-template {
+      background: #f9fafb;
+      padding: 2rem;
+    }
+  }
+
+  /* Prevent page breaks inside important elements */
+  .contract-template .border-gray-300 {
+    page-break-inside: avoid;
+  }
+
+  /* Orphans and widows */
+  .contract-template p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Selection styling */
+  .contract-text::selection {
+    background-color: #dbeafe !important;
+  }
+
+  /* Ensure proper spacing */
+  .contract-template .p-1 { padding: 0.25rem; }
+  .contract-template .p-2 { padding: 0.5rem; }
+  .contract-template .p-3 { padding: 0.75rem; }
+  .contract-template .p-4 { padding: 1rem; }
+
+  /* List styling */
+  .contract-template .list-disc {
+    list-style-type: disc;
+  }
+
+  .contract-template .pl-6 {
+    padding-left: 1.5rem;
+  }
+
+  .contract-template .pl-4 {
+    padding-left: 1rem;
+  }
+
+  /* Background colors */
+  .contract-template .bg-blue-50 {
+    background-color: #eff6ff;
+  }
+
+  .contract-template .bg-green-50 {
+    background-color: #f0fdf4;
+  }
+
+  .contract-template .bg-gray-50 {
+    background-color: #f9fafb;
+  }
+
+  .contract-template .bg-gray-100 {
+    background-color: #f3f4f6;
+  }
+
+  .contract-template .bg-gray-200 {
+    background-color: #e5e7eb;
+  }
+
+  /* Border colors */
+  .contract-template .border-gray-200 {
+    border-color: #e5e7eb;
+  }
+
+  .contract-template .border-gray-300 {
+    border-color: #d1d5db;
+  }
+
+  .contract-template .border-gray-400 {
+    border-color: #9ca3af;
+  }
+
+  .contract-template .border-red-600 {
+    border-color: #dc2626;
+  }
+
+  .contract-template .border-l-4 {
+    border-left-width: 4px;
+  }
+
+  .contract-template .border-t {
+    border-top-width: 1px;
+  }
+
+  .contract-template .border-b {
+    border-bottom-width: 1px;
+  }
+
+  .contract-template .border-dashed {
+    border-style: dashed;
+  }
+
+  /* Text colors */
+  .contract-template .text-blue-800 {
+    color: #1e40af;
+  }
+
+  .contract-template .text-green-800 {
+    color: #166534;
+  }
+
+  .contract-template .text-blue-900 {
+    color: #1e3a8a;
+  }
+
+  .contract-template .text-red-600 {
+    color: #dc2626;
+  }
+
+  .contract-template .text-gray-400 {
+    color: #9ca3af;
+  }
+
+  .contract-template .text-gray-500 {
+    color: #6b7280;
+  }
+
+  .contract-template .text-gray-600 {
+    color: #4b5563;
+  }
+
+  /* Font weights */
+  .contract-template .font-bold {
+    font-weight: bold;
+  }
+
+  .contract-template .font-semibold {
+    font-weight: 600;
+  }
+
+  /* Text decoration */
+  .contract-template .underline {
+    text-decoration: underline;
+  }
+
+  /* Spacing */
+  .contract-template .space-y-1 > * + * {
+    margin-top: 0.25rem;
+  }
+
+  .contract-template .space-y-2 > * + * {
+    margin-top: 0.5rem;
+  }
+
+  .contract-template .space-y-4 > * + * {
+    margin-top: 1rem;
+  }
+
+  .contract-template .mb-1 {
+    margin-bottom: 0.25rem;
+  }
+
+  .contract-template .mb-2 {
+    margin-bottom: 0.5rem;
+  }
+
+  .contract-template .mt-1 {
+    margin-top: 0.25rem;
+  }
+
+  .contract-template .mt-2 {
+    margin-top: 0.5rem;
+  }
+
+  .contract-template .mt-4 {
+    margin-top: 1rem;
+  }
+
+  /* Grid layout */
+  .contract-template .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contract-template .gap-8 {
+    gap: 2rem;
+  }
+
+  /* Flexbox */
+  .contract-template .flex {
+    display: flex;
+  }
+
+  .contract-template .flex-col {
+    flex-direction: column;
+  }
+
+  .contract-template .items-center {
+    align-items: center;
+  }
+
+  .contract-template .justify-center {
+    justify-content: center;
+  }
+
+  .contract-template .justify-between {
+    justify-content: space-between;
+  }
+
+  /* Positioning */
+  .contract-template .relative {
+    position: relative;
+  }
+
+  .contract-template .absolute {
+    position: absolute;
+  }
+
+  .contract-template .bottom-10 {
+    bottom: 2.5rem;
+  }
+
+  .contract-template .right-10 {
+    right: 2.5rem;
+  }
+
+  /* Transforms */
+  .contract-template .transform {
+    transform: var(--tw-transform);
+  }
+
+  .contract-template .-rotate-6 {
+    --tw-rotate: -6deg;
+    transform: var(--tw-rotate);
+  }
+
+  /* Opacity */
+  .contract-template .opacity-90 {
+    opacity: 0.9;
+  }
+
+  /* Inline block */
+  .contract-template .inline-block {
+    display: inline-block;
+  }
+
+  /* Italics */
+  .contract-template .italic {
+    font-style: italic;
+  }
+
+  /* Uppercase */
+  .contract-template .uppercase {
+    text-transform: uppercase;
+  }
+}

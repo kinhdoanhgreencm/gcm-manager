@@ -12,10 +12,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Tìm user theo username hoặc email
+    // Tìm user theo username hoặc email - explicitly select columns (exclude permissions)
     const { data: users, error: fetchError } = await supabase
       .from('users')
-      .select('*')
+      .select('id, username, email, password, full_name, phone, role, branch, status, manager_id, join_date, date_of_birth, id_card, id_card_issue_date, id_card_issue_place, bank_name, bank_account, professional_level, permanent_address, current_address, tax_code, dependents, avatar_url, last_login_at, must_change_password, created_at, updated_at, notes')
       .or(`username.eq.${username},email.eq.${username}`)
       .eq('status', 'ACTIVE');
 
@@ -36,17 +36,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Cập nhật last_login_at
-    await supabase
+    // Kiểm tra nếu user đăng nhập lần đầu (chưa có last_login_at) thì bắt buộc đổi mật khẩu
+    const isFirstLogin = !user.last_login_at;
+    const mustChangePassword = isFirstLogin || user.must_change_password === true;
+
+    // Cập nhật last_login_at và must_change_password
+    const updatedAt = new Date().toISOString();
+    const { error: updateError } = await supabase
       .from('users')
-      .update({ last_login_at: new Date().toISOString() })
+      .update({ 
+        last_login_at: updatedAt,
+        must_change_password: mustChangePassword
+      })
       .eq('id', user.id);
 
+    if (updateError) {
+      console.error('Error updating last_login_at:', updateError);
+    }
+
+    // Fetch lại user để đảm bảo có dữ liệu mới nhất từ database - explicitly select columns
+    const { data: updatedUser, error: refetchError } = await supabase
+      .from('users')
+      .select('id, username, email, password, full_name, phone, role, branch, status, manager_id, join_date, date_of_birth, id_card, id_card_issue_date, id_card_issue_place, bank_name, bank_account, professional_level, permanent_address, current_address, tax_code, dependents, avatar_url, last_login_at, must_change_password, created_at, updated_at, notes')
+      .eq('id', user.id)
+      .single();
+
+    // Nếu fetch thành công, dùng dữ liệu mới; nếu không, dùng dữ liệu cũ
+    const finalUser = updatedUser || user;
+
+    // Lấy permissions từ bảng permissions riêng
+    const { data: permissionsData, error: permissionsError } = await supabase
+      .from('permissions')
+      .select('permissions')
+      .eq('user_id', finalUser.id)
+      .single();
+
     // Trả về thông tin user (không bao gồm password)
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = finalUser;
+
+    // Lấy permissions từ bảng permissions, nếu không có thì dùng object rỗng
+    let userPermissions: Record<string, boolean> = {};
+    if (permissionsData && permissionsData.permissions) {
+      userPermissions = permissionsData.permissions as Record<string, boolean>;
+    } else if (!permissionsError) {
+      // Nếu không có lỗi nhưng không có dữ liệu, tạo permissions mặc định
+      // (có thể user chưa có record trong bảng permissions)
+      userPermissions = {};
+    }
 
     return NextResponse.json({
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        permissions: userPermissions,
+        must_change_password: mustChangePassword,
+        last_login_at: updatedAt
+      },
       message: 'Đăng nhập thành công',
     });
   } catch (error) {

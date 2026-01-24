@@ -31,20 +31,66 @@ export const SupplierFormPage: React.FC = () => {
     bankName: '',
     bankAccount: '',
     paymentTerms: 'DEFERRED' as 'IMMEDIATE' | 'DEFERRED',
-    assignedStaffId: 'staff_admin',
+    assignedStaffId: '',
     notes: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [loadingStaff, setLoadingStaff] = useState(true);
+
+  // Fetch staff list from database
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        setLoadingStaff(true);
+        const response = await fetch('/api/suppliers/staff', { cache: 'no-store' });
+        const result = await response.json();
+
+        if (!response.ok) {
+          console.error('Error fetching staff:', result?.error || 'Unknown error');
+          return;
+        }
+
+        const data = result?.staff || [];
+
+        if (data) {
+          setStaffList(data);
+          // Set default to first staff if available
+          if (data.length > 0 && !formData.assignedStaffId) {
+            setFormData(prev => ({ ...prev, assignedStaffId: data[0].id }));
+          }
+        }
+      } catch (err: any) {
+        console.error('Unexpected error fetching staff:', err);
+      } finally {
+        setLoadingStaff(false);
+      }
+    };
+
+    fetchStaff();
+  }, []);
 
   const isCorporate = formData.type !== SupplierType.INDIVIDUAL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validation
     if (!formData.name) {
       setSubmitError('Vui lòng nhập tên nhà cung cấp');
+      return;
+    }
+
+    // Validate legal information based on type
+    if (isCorporate && !formData.taxCode) {
+      setSubmitError('Vui lòng nhập mã số thuế doanh nghiệp');
+      return;
+    }
+
+    if (!isCorporate && !formData.idCard) {
+      setSubmitError('Vui lòng nhập số CCCD / Hộ chiếu');
       return;
     }
 
@@ -52,20 +98,43 @@ export const SupplierFormPage: React.FC = () => {
     setSubmitError(null);
 
     try {
-      // TODO: Save to Supabase
-      const supplierData = {
-        ...formData,
-        id: 'sup_' + Math.random().toString(36).substr(2, 9),
-        code: 'NCC-' + Math.floor(1000 + Math.random() * 9000),
+      // Prepare supplier data in database format (snake_case)
+      const supplierData: any = {
+        type: formData.type,
+        name: formData.name,
+        phone: formData.phone || null,
+        email: formData.email || null,
+        address: formData.address || null,
+        payment_terms: formData.paymentTerms || 'DEFERRED',
+        bank_name: formData.bankName || null,
+        bank_account: formData.bankAccount || null,
+        assigned_staff_id: formData.assignedStaffId || null,
         status: SupplierStatus.ACTIVE,
-        createdAt: new Date().toISOString(),
-        totalVehicles: 0,
-        totalImportValue: 0,
+        notes: formData.notes || null,
+        // Legal information - set based on type
+        tax_code: isCorporate ? (formData.taxCode || null) : null,
+        company_name: isCorporate ? (formData.companyName || null) : null,
+        representative: isCorporate ? (formData.representative || null) : null,
+        position: isCorporate ? (formData.position || null) : null,
+        id_card: !isCorporate ? (formData.idCard || null) : null,
+        // Statistics (will be auto-calculated by triggers)
+        total_vehicles: 0,
+        total_import_value: 0,
         debt: 0
       };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ supplier: supplierData })
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || 'Lỗi lưu dữ liệu nhà cung cấp');
+      }
 
       // Success - redirect to suppliers page
       router.push('/suppliers');
@@ -296,10 +365,14 @@ export const SupplierFormPage: React.FC = () => {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none"
                   value={formData.assignedStaffId}
                   onChange={e => setFormData({...formData, assignedStaffId: e.target.value})}
+                  disabled={loadingStaff}
                 >
-                  <option value="staff_admin">Quản lý kho</option>
-                  <option value="staff_sale_1">Trưởng phòng kinh doanh</option>
-                  <option value="staff_accountant">Kế toán thanh toán</option>
+                  <option value="">{loadingStaff ? 'Đang tải...' : '-- Chọn nhân viên --'}</option>
+                  {staffList.map((staff) => (
+                    <option key={staff.id} value={staff.id}>
+                      {staff.full_name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="md:col-span-2 space-y-2">

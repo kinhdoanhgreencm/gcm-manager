@@ -21,7 +21,7 @@ export const StaffForm: React.FC<StaffFormProps> = ({ onClose, onSave, existingS
     name: '',
     phone: '',
     email: '',
-    role: StaffRole.SALES,
+    role: StaffRole.SALES_CONSULTANT,
     branch: 'GCM-Tổng',
     status: StaffStatus.ACTIVE,
     joinDate: new Date().toISOString().split('T')[0],
@@ -31,8 +31,9 @@ export const StaffForm: React.FC<StaffFormProps> = ({ onClose, onSave, existingS
       canApproveFinance: false,
       canViewReports: false,
       canManageInventory: false,
-      canManageStaff: false
-    }
+      canManageStaff: false,
+      contractsApprove: false
+    } as StaffPermissions
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -130,11 +131,15 @@ export const StaffForm: React.FC<StaffFormProps> = ({ onClose, onSave, existingS
                         value={formData.role}
                         onChange={e => setFormData({...formData, role: e.target.value as StaffRole})}
                       >
-                        <option value={StaffRole.MANAGER}>Quản lý / Chủ đại lý</option>
-                        <option value={StaffRole.SALES}>Nhân viên Sale</option>
+                        <option value={StaffRole.STRATEGIC_DIRECTOR}>Giám đốc chiến lược</option>
+                        <option value={StaffRole.BUSINESS_DIRECTOR}>Giám đốc kinh doanh</option>
+                        <option value={StaffRole.SALES_MANAGER}>Trưởng phòng kinh doanh</option>
                         <option value={StaffRole.ACCOUNTANT}>Kế toán</option>
-                        <option value={StaffRole.INVENTORY}>Nhân viên Kho</option>
-                        <option value={StaffRole.LEGAL}>Nhân viên Hồ sơ</option>
+                        <option value={StaffRole.IT}>IT</option>
+                        <option value={StaffRole.SALES_CONSULTANT}>Tư vấn bán hàng</option>
+                        <option value={StaffRole.ADMIN}>Admin</option>
+                        <option value={StaffRole.INVENTORY}>Nhân viên kho</option>
+                        <option value={StaffRole.DRIVER_RECRUITMENT_POINT}>Điểm tuyển tài xế</option>
                       </select>
                    </div>
                    <div className="space-y-2">

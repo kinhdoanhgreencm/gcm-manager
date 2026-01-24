@@ -41,40 +41,7 @@ async function createUser() {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Permissions mặc định dựa trên role
-    let permissions = {
-      canManageContract: false,
-      canApproveFinance: false,
-      canViewReports: false,
-      canManageInventory: false,
-      canManageStaff: false
-    };
-
-    if (role === 'MANAGER') {
-      permissions = {
-        canManageContract: true,
-        canApproveFinance: true,
-        canViewReports: true,
-        canManageInventory: true,
-        canManageStaff: true
-      };
-    } else if (role === 'SALES') {
-      permissions = {
-        canManageContract: true,
-        canApproveFinance: false,
-        canViewReports: false,
-        canManageInventory: false,
-        canManageStaff: false
-      };
-    } else if (role === 'ACCOUNTANT') {
-      permissions = {
-        canManageContract: false,
-        canApproveFinance: true,
-        canViewReports: true,
-        canManageInventory: false,
-        canManageStaff: false
-      };
-    }
+    // Permissions column has been removed from database - all users have full access now
 
     // Insert user
     const { data, error } = await supabase
@@ -87,8 +54,8 @@ async function createUser() {
         phone: phone || null,
         role,
         branch,
-        status: 'ACTIVE',
-        permissions
+        status: 'ACTIVE'
+        // permissions column has been removed
       })
       .select()
       .single();
@@ -96,6 +63,23 @@ async function createUser() {
     if (error) {
       console.error('❌ Lỗi khi tạo user:', error.message);
       process.exit(1);
+    }
+
+    // Tạo permissions mặc định cho user mới
+    if (data && data.id) {
+      const { error: permissionsError } = await supabase
+        .from('permissions')
+        .insert({
+          user_id: data.id,
+          permissions: {} // Permissions mặc định (tất cả false)
+        });
+
+      if (permissionsError) {
+        console.warn('⚠️  Lỗi khi tạo permissions mặc định:', permissionsError.message);
+        console.warn('   User đã được tạo nhưng chưa có permissions. Vui lòng tạo permissions thủ công.');
+      } else {
+        console.log('✅ Đã tạo permissions mặc định cho user');
+      }
     }
 
     console.log('\n✅ Tạo user thành công!');
@@ -106,6 +90,8 @@ async function createUser() {
     console.log(`   Tên: ${data.full_name}`);
     console.log(`   Vai trò: ${data.role}`);
     console.log(`   Chi nhánh: ${data.branch}`);
+    console.log('\n💡 Lưu ý: User mới có permissions mặc định (tất cả false).');
+    console.log('   Vui lòng cập nhật permissions cho user này trong trang quản lý nhân sự.');
 
   } catch (error) {
     console.error('❌ Lỗi:', error.message);

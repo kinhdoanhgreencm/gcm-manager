@@ -7,11 +7,13 @@ import {
   DollarSign, Calendar, Tag, Info, 
   ShieldCheck, Upload, Image as ImageIcon,
   FileText, Plus, AlertCircle, Hash,
-  ChevronDown, Building2, Truck, ArrowLeft, X
+  ChevronDown, Building2, Truck, ArrowLeft, X, AlertTriangle
 } from 'lucide-react';
-import { VehicleType, VehicleStatus } from '@/types';
-import { MOCK_SUPPLIERS } from '@/constants';
-import { supabase } from '@/services/supabaseClient';
+import { VehicleType, VehicleStatus, Supplier } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const supabase = null as any;
 
 interface VehicleFormPageProps {
   onSave?: (data: any) => void;
@@ -25,6 +27,10 @@ interface ImagePreview {
 
 export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
   const router = useRouter();
+  const { user } = useAuth();
+  
+  // Check if user is inventory staff (cannot input cost and price)
+  const isInventoryStaff = user?.role === 'INVENTORY';
   
   // Scroll to top when component mounts
   useEffect(() => {
@@ -133,23 +139,130 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
     version: '',
     year: new Date().getFullYear(),
     color: '',
+    interiorColor: '',
     vin: '',
     engineNumber: '',
+    code: '', // Mã xe (CTGF-XXXX) - để trống sẽ tự động generate
     mileage: 0,
     batteryHealth: 100,
     cost: 0,
     price: 0,
     supplierId: '',
     entryDate: getCurrentDateTime(),
-    notes: ''
+    // Vị trí xe (Đang vận chuyển, Đã về kho)
+    vehiclePosition: 'Đang vận chuyển',
+    // Trạng thái giao dịch (Sẵn sàng giao dịch, Đã cọc, Đã xuất hóa đơn, Đã bàn giao)
+    transactionStatus: 'Sẵn sàng giao dịch',
+    notes: '',
+    conditionNotes: ''
   });
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<string>('');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(true);
 
   const isEV = formData.type === VehicleType.EV;
   const isUsed = formData.type === VehicleType.USED;
+
+  // Fetch suppliers from database
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        setLoadingSuppliers(true);
+        const response = await fetch('/api/suppliers', { cache: 'no-store' });
+        const result = await response.json();
+
+        if (!response.ok) {
+          console.error('Error fetching suppliers:', result?.error || 'Unknown error');
+          setSuppliers([]);
+          return;
+        }
+
+        if (result.suppliers) {
+          const transformedSuppliers: Supplier[] = result.suppliers
+            .filter((s: any) => s.status === 'ACTIVE')
+            .map((s: any) => ({
+              id: s.id,
+              code: s.code || '',
+              type: s.type as any,
+              name: s.name || '',
+              phone: s.phone || '',
+              email: s.email || undefined,
+              address: s.address || '',
+              taxCode: s.tax_code || undefined,
+              idCard: s.id_card || undefined,
+              companyName: s.company_name || undefined,
+              representative: s.representative || undefined,
+              position: s.position || undefined,
+              bankName: s.bank_name || undefined,
+              bankAccount: s.bank_account || undefined,
+              paymentTerms: (s.payment_terms || 'DEFERRED') as 'IMMEDIATE' | 'DEFERRED',
+              assignedStaffId: s.assigned_staff_id || '',
+              status: s.status as any,
+              notes: s.notes || undefined,
+              createdAt: s.created_at || new Date().toISOString(),
+              totalVehicles: s.total_vehicles || 0,
+              totalImportValue: Number(s.total_import_value) || 0,
+              debt: Number(s.debt) || 0
+            }));
+          setSuppliers(transformedSuppliers);
+        }
+        return;
+
+        const { data, error: fetchError } = await supabase
+          .from('suppliers')
+          .select('*')
+          .eq('status', 'ACTIVE')
+          .order('name', { ascending: true });
+
+        if (fetchError) {
+          console.error('Error fetching suppliers:', fetchError);
+          // Don't show error to user, just log it
+          setSuppliers([]);
+          return;
+        }
+
+        if (data) {
+          // Transform Supabase data to Supplier type
+          const transformedSuppliers: Supplier[] = data.map((s: any) => ({
+            id: s.id,
+            code: s.code || '',
+            type: s.type as any,
+            name: s.name || '',
+            phone: s.phone || '',
+            email: s.email || undefined,
+            address: s.address || '',
+            taxCode: s.tax_code || undefined,
+            idCard: s.id_card || undefined,
+            companyName: s.company_name || undefined,
+            representative: s.representative || undefined,
+            position: s.position || undefined,
+            bankName: s.bank_name || undefined,
+            bankAccount: s.bank_account || undefined,
+            paymentTerms: (s.payment_terms || 'DEFERRED') as 'IMMEDIATE' | 'DEFERRED',
+            assignedStaffId: s.assigned_staff_id || '',
+            status: s.status as any,
+            notes: s.notes || undefined,
+            createdAt: s.created_at || new Date().toISOString(),
+            totalVehicles: s.total_vehicles || 0,
+            totalImportValue: Number(s.total_import_value) || 0,
+            debt: Number(s.debt) || 0
+          }));
+
+          setSuppliers(transformedSuppliers);
+        }
+      } catch (err: any) {
+        console.error('Unexpected error fetching suppliers:', err);
+        setSuppliers([]);
+      } finally {
+        setLoadingSuppliers(false);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -192,6 +305,9 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
 
   // Handle cost input change
   const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent inventory staff from changing cost
+    if (isInventoryStaff) return;
+    
     const inputValue = e.target.value;
     // Remove all non-digit characters
     const cleaned = inputValue.replace(/[^\d]/g, '');
@@ -202,6 +318,9 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
 
   // Handle price input change
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent inventory staff from changing price
+    if (isInventoryStaff) return;
+    
     const inputValue = e.target.value;
     // Remove all non-digit characters
     const cleaned = inputValue.replace(/[^\d]/g, '');
@@ -212,12 +331,35 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    // Note: cost and price are not required for inventory staff
+    const costValid = isInventoryStaff ? true : formData.cost > 0;
+    const priceValid = isInventoryStaff ? true : formData.price > 0;
+    
+    if (!formData.type || !formData.vin || !formData.engineNumber || !formData.make || 
+        !formData.model || !formData.version || !formData.year || !formData.color || 
+        !formData.interiorColor || !formData.vehiclePosition || !formData.conditionNotes ||
+        !formData.supplierId || !formData.entryDate || !costValid || !priceValid) {
+      setSubmitError('Vui lòng nhập đầy đủ thông tin bắt buộc');
+      return;
+    }
+
+    // Additional validation for USED vehicles
+    if (isUsed) {
+      if (formData.mileage === undefined || formData.mileage === null || 
+          formData.batteryHealth === undefined || formData.batteryHealth === null) {
+        setSubmitError('Vui lòng nhập đầy đủ thông tin cho xe lướt (ODO và tình trạng pin)');
+        return;
+      }
+    }
+
     if (!formData.supplierId) {
-      alert("Vui lòng chọn Nhà cung cấp / Nguồn nhập xe");
+      setSubmitError("Vui lòng chọn Nhà cung cấp / Nguồn nhập xe");
       return;
     }
     if (!formData.vin) {
-      alert("Vui lòng nhập số VIN (Số khung)");
+      setSubmitError("Vui lòng nhập số VIN (Số khung)");
       return;
     }
 
@@ -226,45 +368,8 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
     setUploadProgress('');
 
     try {
-      // 1. Upload images to Supabase Storage first
-      const uploadedImageUrls: string[] = [];
-      
-      if (images.length > 0) {
-        setUploadProgress(`Đang upload ${images.length} ảnh...`);
-        const vehicleId = `vehicle-${Date.now()}`;
-        
-        for (let i = 0; i < images.length; i++) {
-          const image = images[i];
-          setUploadProgress(`Đang upload ảnh ${i + 1}/${images.length}: ${image.file.name}`);
-          
-          const fileExt = image.file.name.split('.').pop();
-          const fileName = `${vehicleId}/${image.id}.${fileExt}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('ERP')
-            .upload(fileName, image.file, {
-              cacheControl: '3600',
-              upsert: false
-            });
+      setUploadProgress('Đang upload ảnh và lưu thông tin xe...');
 
-          if (uploadError) {
-            console.error('Error uploading image:', uploadError);
-            throw new Error(`Lỗi upload ảnh "${image.file.name}": ${uploadError.message}`);
-          }
-
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('ERP')
-            .getPublicUrl(fileName);
-
-          if (urlData?.publicUrl) {
-            uploadedImageUrls.push(urlData.publicUrl);
-          }
-        }
-        setUploadProgress('Upload ảnh thành công! Đang lưu thông tin xe...');
-      }
-
-      // 2. Get current user ID
       const storedUser = localStorage.getItem('user');
       let createdBy = null;
       if (storedUser) {
@@ -276,53 +381,52 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
         }
       }
 
-      // 3. Prepare vehicle data
       const vehicleData = {
-        vin: formData.vin,
+        vin: formData.vin.toUpperCase(),
         make: formData.make,
         model: formData.model,
         version: formData.version || null,
         year: formData.year,
         color: formData.color || null,
+        interior_color: formData.interiorColor || null,
         engine_number: formData.engineNumber || null,
+        code: formData.code && formData.code.trim() !== '' ? formData.code.toUpperCase().trim() : null,
         type: formData.type,
         mileage: formData.mileage || null,
-        battery_health: isEV ? formData.batteryHealth : null,
+        battery_health: (isEV || isUsed) ? formData.batteryHealth : null,
         cost: formData.cost,
         price: formData.price,
         status: VehicleStatus.AVAILABLE,
         supplier_id: formData.supplierId,
         entry_date: formData.entryDate,
+        vehicle_position: formData.vehiclePosition || null,
+        transaction_status: formData.transactionStatus || 'Sẵn sàng giao dịch',
         notes: formData.notes || null,
-        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : [],
+        condition_notes: formData.conditionNotes || null,
         created_by: createdBy,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
-      // 4. Insert vehicle into Supabase
-      setUploadProgress('Đang lưu thông tin xe vào database...');
-      const { data, error } = await supabase
-        .from('vehicles')
-        .insert([vehicleData])
-        .select()
-        .single();
+      const payload = new FormData();
+      payload.append('data', JSON.stringify(vehicleData));
+      images.forEach((image) => payload.append('images', image.file));
 
-      if (error) {
-        console.error('Error saving vehicle:', error);
-        throw new Error(`Lỗi lưu dữ liệu xe: ${error.message}`);
+      const response = await fetch('/api/vehicles', {
+        method: 'POST',
+        body: payload
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        setSubmitError(result?.error || 'Lỗi lưu dữ liệu xe');
+        setIsSubmitting(false);
+        setUploadProgress('');
+        return;
       }
 
-      // 5. Call onSave callback if provided
-      if (onSave && data) {
-        onSave(data);
-      }
-
-      // 6. Success - redirect to inventory page
-      setUploadProgress('Hoàn tất!');
-      setTimeout(() => {
-        router.push('/inventory');
-      }, 500);
+      router.push('/inventory');
+      return;
     } catch (error: any) {
       console.error('Submit error:', error);
       const errorMessage = error.message || 'Có lỗi xảy ra khi lưu dữ liệu. Vui lòng thử lại.';
@@ -376,16 +480,37 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phân loại xe *</label>
                 <div className="relative">
                   <select 
+                    required
                     className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                     value={formData.type}
                     onChange={e => setFormData({...formData, type: e.target.value as VehicleType})}
                   >
                     <option value={VehicleType.EV}>VinFast EV (Mới)</option>
                     <option value={VehicleType.USED}>VinFast Lướt (Cũ)</option>
-                    <option value={VehicleType.NEW}>Xe xăng / Loại khác</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mã xe</label>
+                <div className="relative">
+                  <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="CTGF-0001 (để trống sẽ tự động tạo)"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-black focus:ring-4 focus:ring-blue-500/10 outline-none transition-all uppercase tracking-tighter"
+                    value={formData.code}
+                    onChange={e => {
+                      let value = e.target.value.toUpperCase().trim();
+                      // Chỉ cho phép format CTGF-XXXX
+                      if (value === '' || value.match(/^CTGF-[0-9]{0,4}$/)) {
+                        setFormData({...formData, code: value});
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400">Để trống để tự động tạo mã theo format CTGF-XXXX</p>
               </div>
 
               <div className="space-y-2">
@@ -404,10 +529,11 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Số máy</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Số máy *</label>
                 <div className="relative">
                   <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input 
+                    required
                     type="text" 
                     placeholder="Số máy..."
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-black focus:ring-4 focus:ring-blue-500/10 outline-none transition-all uppercase tracking-tighter"
@@ -418,9 +544,10 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hãng sản xuất</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hãng sản xuất *</label>
                 <div className="relative">
                   <select 
+                    required
                     className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                     value={formData.make}
                     onChange={e => setFormData({...formData, make: e.target.value})}
@@ -433,9 +560,10 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Model xe</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Model xe *</label>
                 <div className="relative">
                   <select 
+                    required
                     className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                     value={formData.model}
                     onChange={e => setFormData({...formData, model: e.target.value})}
@@ -460,9 +588,10 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phiên bản</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phiên bản *</label>
                 <div className="relative">
                   <select 
+                    required
                     className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                     value={formData.version}
                     onChange={e => setFormData({...formData, version: e.target.value})}
@@ -476,8 +605,9 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Năm sản xuất</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Năm sản xuất *</label>
                 <input 
+                  required
                   type="number" 
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none"
                   value={formData.year}
@@ -486,9 +616,10 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Màu ngoại thất</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Màu ngoại thất *</label>
                 <div className="relative">
                   <select 
+                    required
                     className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                     value={formData.color}
                     onChange={e => setFormData({...formData, color: e.target.value})}
@@ -503,6 +634,67 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Màu nội thất *</label>
+                <div className="relative">
+                  <select 
+                    required
+                    className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    value={formData.interiorColor}
+                    onChange={e => setFormData({...formData, interiorColor: e.target.value})}
+                  >
+                    <option value="">-- Chọn Màu --</option>
+                    <option value="Đen">Đen</option>
+                    <option value="Xám">Xám</option>
+                    <option value="Be">Be</option>
+                    <option value="Nâu">Nâu</option>
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                </div>
+              </div>
+
+              {/* Hiển thị khi chọn "VinFast Lướt (Cũ)" */}
+              {isUsed && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ODO (km) *</label>
+                    <div className="relative">
+                      <Timer className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        required
+                        type="number" 
+                        placeholder="0"
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                        value={formData.mileage || ''}
+                        onChange={e => setFormData({...formData, mileage: Number(e.target.value) || 0})}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tình trạng pin (%) *</label>
+                    <div className="relative">
+                      <Zap className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        required
+                        type="number" 
+                        placeholder="100"
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                        value={formData.batteryHealth || ''}
+                        onChange={e => {
+                          const value = Number(e.target.value);
+                          const clampedValue = Math.min(100, Math.max(0, value || 0));
+                          setFormData({...formData, batteryHealth: clampedValue});
+                        }}
+                        min="0"
+                        max="100"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
@@ -515,11 +707,11 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">2. Hình ảnh xe, Nhà cung cấp & Ngày hạch toán</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              {/* Hình ảnh xe */}
-              <div className="space-y-4 flex flex-col h-full">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+              {/* Hình ảnh xe - Thu nhỏ */}
+              <div className="space-y-4 flex flex-col">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest h-5 flex items-center">Hình ảnh xe</label>
-                <div className="relative flex-1">
+                <div className="relative">
                   <input
                     type="file"
                     id="image-upload"
@@ -530,24 +722,41 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
                   />
                   <label
                     htmlFor="image-upload"
-                    className="flex flex-col items-center justify-center w-full min-h-[192px] border-2 border-dashed border-slate-300 rounded-[32px] bg-slate-50 hover:bg-slate-100 hover:border-purple-400 cursor-pointer transition-all group"
+                    className="flex flex-col items-center justify-center w-full min-h-[120px] border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 hover:bg-slate-100 hover:border-purple-400 cursor-pointer transition-all group"
                   >
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-12 h-12 mb-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
-                      <p className="mb-2 text-sm font-black text-slate-600">
-                        <span className="text-purple-600">Click để upload</span> hoặc kéo thả ảnh vào đây
+                    <div className="flex flex-col items-center justify-center py-4 px-2">
+                      <Upload className="w-8 h-8 mb-2 text-slate-400 group-hover:text-purple-600 transition-colors" />
+                      <p className="mb-1 text-xs font-bold text-slate-600 text-center">
+                        <span className="text-purple-600">Upload</span> ảnh
                       </p>
-                      <p className="text-xs text-slate-400 font-medium">PNG, JPG, WEBP (Tối đa 10MB mỗi ảnh)</p>
+                      <p className="text-[10px] text-slate-400 font-medium text-center">PNG, JPG, WEBP</p>
                     </div>
                   </label>
                 </div>
 
-                {/* Image Preview Grid */}
+                {/* Vị trí xe */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vị trí xe *</label>
+                  <div className="relative">
+                    <select
+                      required
+                      className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                      value={formData.vehiclePosition}
+                      onChange={e => setFormData({ ...formData, vehiclePosition: e.target.value })}
+                    >
+                      <option value="Đang vận chuyển">Đang vận chuyển</option>
+                      <option value="Đã về kho">Đã về kho</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                  </div>
+                </div>
+
+                {/* Image Preview Grid - Compact */}
                 {images.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     {images.map((image) => (
                       <div key={image.id} className="relative group">
-                        <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 border-2 border-slate-200">
+                        <div className="aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
                           <img
                             src={image.preview}
                             alt="Preview"
@@ -557,19 +766,30 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
                         <button
                           type="button"
                           onClick={() => handleRemoveImage(image.id)}
-                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
                         >
-                          <X size={16} />
+                          <X size={12} />
                         </button>
-                        <div className="absolute bottom-2 left-2 right-2">
-                          <p className="text-[10px] font-medium text-white bg-black/50 px-2 py-1 rounded-lg truncate">
-                            {image.file.name}
-                          </p>
-                        </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Ghi chú tình trạng xe */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ghi chú tình trạng xe *</label>
+                <div className="relative">
+                  <FileText className="absolute left-4 top-4 text-slate-400 pointer-events-none" size={18} />
+                  <textarea
+                    required
+                    rows={6}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium outline-none focus:ring-4 focus:ring-blue-500/10 transition-all resize-none"
+                    placeholder="Ghi chú về tình trạng xe: vết xước, hư hỏng, bảo dưỡng..."
+                    value={formData.conditionNotes}
+                    onChange={e => setFormData({...formData, conditionNotes: e.target.value})}
+                  />
+                </div>
               </div>
 
               {/* Nhà cung cấp và Ngày hạch toán - Cùng 1 cột */}
@@ -581,13 +801,18 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
                      <Truck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                      <select 
                       required
-                      className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none h-[46px]"
+                      disabled={loadingSuppliers}
+                      className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none h-[46px] disabled:opacity-50 disabled:cursor-not-allowed"
                       value={formData.supplierId}
                       onChange={e => setFormData({...formData, supplierId: e.target.value})}
                      >
-                       <option value="">-- Chọn Nhà cung cấp --</option>
-                       {MOCK_SUPPLIERS.map(sup => (
-                         <option key={sup.id} value={sup.id}>{sup.name} ({sup.code})</option>
+                       <option value="">
+                         {loadingSuppliers ? 'Đang tải danh sách...' : '-- Chọn Nhà cung cấp --'}
+                       </option>
+                       {suppliers.map(sup => (
+                         <option key={sup.id} value={sup.id}>
+                           {sup.name} {sup.code ? `(${sup.code})` : ''}
+                         </option>
                        ))}
                      </select>
                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
@@ -596,10 +821,11 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
 
                 {/* Ngày hạch toán */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest h-5 flex items-center">Ngày hạch toán nhập kho</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest h-5 flex items-center">Ngày hạch toán nhập kho *</label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                     <input 
+                      required
                       type="text" 
                       className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-mono h-[46px]"
                       placeholder="hh:mm dd/mm/yyyy"
@@ -630,35 +856,55 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-900 p-8 rounded-[40px] text-white shadow-2xl relative overflow-hidden">
                <div className="space-y-4 relative z-10">
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Giá vốn nhập kho (Cost)</label>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                    Giá vốn nhập kho (Cost) {!isInventoryStaff && '*'}
+                  </label>
                   <div className="relative">
                     <input 
-                      required
+                      required={!isInventoryStaff}
+                      disabled={isInventoryStaff}
                       type="text" 
                       inputMode="numeric"
-                      className="w-full bg-white/10 border border-white/10 rounded-2xl px-6 pr-16 py-4 text-2xl font-black outline-none focus:bg-white/20 transition-all"
+                      className={`w-full bg-white/10 border border-white/10 rounded-2xl px-6 pr-16 py-4 text-2xl font-black outline-none focus:bg-white/20 transition-all ${
+                        isInventoryStaff ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                       placeholder="0"
                       value={formData.cost === 0 ? '' : formatNumber(formData.cost)}
                       onChange={handleCostChange}
                     />
                     <span className="absolute right-6 top-1/2 -translate-y-1/2 text-xl font-black text-white/60">đ</span>
                   </div>
+                  {isInventoryStaff && (
+                    <p className="text-[10px] text-white/40 font-medium mt-1">
+                      Nhân viên kho không được nhập giá vốn
+                    </p>
+                  )}
                </div>
 
                <div className="space-y-4 relative z-10">
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Giá niêm yết dự kiến (MSRP)</label>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                    Giá niêm yết dự kiến (MSRP) {!isInventoryStaff && '*'}
+                  </label>
                   <div className="relative">
                     <input 
-                      required
+                      required={!isInventoryStaff}
+                      disabled={isInventoryStaff}
                       type="text" 
                       inputMode="numeric"
-                      className="w-full bg-emerald-500/20 border border-emerald-500/30 rounded-2xl px-6 pr-16 py-4 text-2xl font-black text-emerald-400 outline-none focus:bg-emerald-500/30 transition-all"
+                      className={`w-full bg-emerald-500/20 border border-emerald-500/30 rounded-2xl px-6 pr-16 py-4 text-2xl font-black text-emerald-400 outline-none focus:bg-emerald-500/30 transition-all ${
+                        isInventoryStaff ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                       placeholder="0"
                       value={formData.price === 0 ? '' : formatNumber(formData.price)}
                       onChange={handlePriceChange}
                     />
                     <span className="absolute right-6 top-1/2 -translate-y-1/2 text-xl font-black text-emerald-400/80">đ</span>
                   </div>
+                  {isInventoryStaff && (
+                    <p className="text-[10px] text-white/40 font-medium mt-1">
+                      Nhân viên kho không được nhập giá niêm yết
+                    </p>
+                  )}
                </div>
                <DollarSign className="absolute -bottom-10 -right-10 text-white/5" size={200} />
             </div>
@@ -693,6 +939,18 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
               <p className="text-sm font-medium text-blue-900">{uploadProgress}</p>
             </div>
           )}
+
+          {/* Warning Message */}
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+            <AlertTriangle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
+            <div className="flex-1">
+              <p className="text-sm font-black text-amber-900 mb-1">⚠️ Cảnh báo quan trọng</p>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Nhân viên kho vui lòng <span className="font-black">kiểm tra kỹ thông tin chính xác</span> trước khi lưu vào hệ thống. 
+                Mọi sai sót sẽ được xử lý bằng hình thức chế tài theo quy định công ty.
+              </p>
+            </div>
+          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4">

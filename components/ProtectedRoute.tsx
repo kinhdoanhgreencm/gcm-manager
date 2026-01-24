@@ -13,8 +13,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
+    } else if (!loading && user && user.must_change_password && pathname !== '/change-password') {
+      // Nếu user cần đổi mật khẩu, redirect đến trang change-password
+      router.push('/change-password');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
   if (loading) {
     return (

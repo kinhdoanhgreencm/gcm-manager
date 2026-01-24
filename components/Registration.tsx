@@ -1,5 +1,6 @@
+'use client'
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ClipboardCheck, Search, Filter, 
   User, Car, FileBadge, Hash, 
@@ -7,10 +8,17 @@ import {
   Clock, AlertCircle, ChevronRight,
   FileText, ShieldCheck, PackageCheck
 } from 'lucide-react';
-import { MOCK_REGISTRATIONS, MOCK_VEHICLES } from '@/constants';
-import { RegistrationStatus, VehicleStatus } from '@/types';
+import { RegistrationStatus, VehicleStatus, RegistrationProfile, Vehicle, PaymentSchedule } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { hasAnyPermission, PermissionCategories } from '@/utils/permissions';
+import { AccessDenied } from './AccessDenied';
 
 export const Registration: React.FC = () => {
+  const { user } = useAuth();
+  const [registrations, setRegistrations] = useState<RegistrationProfile[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const getStatusConfig = (status: RegistrationStatus) => {
     switch(status) {
       case RegistrationStatus.PENDING:
@@ -26,10 +34,101 @@ export const Registration: React.FC = () => {
     }
   };
 
+  // Fetch registration data from contracts
+  useEffect(() => {
+    fetchRegistrationData();
+    fetchVehicles();
+  }, []);
+
+  const fetchVehicles = async () => {
+    try {
+      const response = await fetch('/api/registration/vehicles', { cache: 'no-store' });
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Error fetching vehicles:', result?.error || 'Unknown error');
+        return;
+      }
+
+      if (result.vehicles) {
+        const transformedVehicles: Vehicle[] = result.vehicles.map((v: any) => ({
+          id: v.id,
+          code: v.code || undefined,
+          vin: v.vin,
+          make: v.make || 'VinFast',
+          model: v.model || '',
+          year: v.year,
+          type: v.type as any,
+          price: Number(v.price) || 0,
+          cost: Number(v.cost) || 0,
+          status: v.status as VehicleStatus,
+          color: v.color || '',
+          mileage: v.mileage || undefined,
+          batteryHealth: v.battery_health || undefined,
+          images: v.images || [],
+          createdAt: v.created_at || new Date().toISOString(),
+          supplierId: v.supplier_id || undefined,
+          transactionStatus: v.transaction_status || 'Sẵn sàng giao dịch'
+        }));
+        setVehicles(transformedVehicles);
+      }
+    } catch (err) {
+      console.error('Error fetching vehicles:', err);
+    }
+  };
+
+  const fetchRegistrationData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/registration', { cache: 'no-store' });
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Error fetching registrations:', result?.error || 'Unknown error');
+        setLoading(false);
+        return;
+      }
+
+      setRegistrations(result.registrations || []);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching registration data:', err);
+      setLoading(false);
+    }
+  };
+
   const handleDeliverCar = (vehicleId: string) => {
     // Logic Nghiệp vụ: Chuyển trạng thái xe từ SOLD/REGISTRATION -> DELIVERED
     alert(`Đã kích hoạt biên bản bàn giao cho xe ID: ${vehicleId}. Trạng thái xe sẽ chuyển sang "ĐÃ BÀN GIAO".`);
   };
+
+  // Check if user has any registration permissions
+  const hasRegistrationPermissions = hasAnyPermission(user?.permissions, PermissionCategories.registration);
+
+  // Filter registrations based on search term
+  const filteredRegistrations = registrations.filter(reg => {
+    if (!searchTerm) return true;
+    const vehicle = vehicles.find(v => v.id === reg.vehicleId);
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      reg.ownerName.toLowerCase().includes(searchLower) ||
+      reg.licensePlate?.toLowerCase().includes(searchLower) ||
+      vehicle?.vin?.toLowerCase().includes(searchLower) ||
+      vehicle?.make?.toLowerCase().includes(searchLower) ||
+      vehicle?.model?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // If user doesn't have any registration permissions, show access denied message
+  if (!hasRegistrationPermissions) {
+    return (
+      <AccessDenied 
+        message="Bạn không có quyền xem hồ sơ pháp lý. Vui lòng liên hệ quản trị viên để được cấp quyền."
+        redirectTo="/dashboard"
+        icon="shield"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -40,6 +139,8 @@ export const Registration: React.FC = () => {
             type="text" 
             placeholder="Tìm theo chủ xe, biển số hoặc số khung..."
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         
@@ -50,11 +151,20 @@ export const Registration: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {MOCK_REGISTRATIONS.map(reg => {
-          const vehicle = MOCK_VEHICLES.find(v => v.id === reg.vehicleId);
-          const status = getStatusConfig(reg.status);
-          const isCompleted = reg.status === RegistrationStatus.COMPLETED;
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="text-slate-500 font-bold">Đang tải dữ liệu...</div>
+        </div>
+      ) : filteredRegistrations.length === 0 ? (
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="text-slate-500 font-bold">Không có hồ sơ đăng kiểm nào</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredRegistrations.map(reg => {
+            const vehicle = vehicles.find(v => v.id === reg.vehicleId);
+            const status = getStatusConfig(reg.status);
+            const isCompleted = reg.status === RegistrationStatus.COMPLETED;
           
           return (
             <div key={reg.id} className="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-md transition-all">
@@ -125,7 +235,8 @@ export const Registration: React.FC = () => {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

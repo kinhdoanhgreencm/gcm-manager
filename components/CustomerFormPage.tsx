@@ -6,12 +6,16 @@ import {
   Save, User, Phone, Mail, MapPin, 
   Hash, Building2, UserCircle, Briefcase, 
   Target, Info, ShieldCheck, FileText,
-  Smartphone, Globe, Users, ArrowLeft, Calendar
+  Smartphone, Globe, Users, ArrowLeft, Calendar,
+  Landmark, CreditCard
 } from 'lucide-react';
 import { CustomerType, CustomerStatus } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { notificationService } from '@/services/notificationService';
 
 export const CustomerFormPage: React.FC = () => {
   const router = useRouter();
+  const { user } = useAuth();
   
   // Scroll to top when component mounts
   useEffect(() => {
@@ -33,43 +37,146 @@ export const CustomerFormPage: React.FC = () => {
     companyName: '',
     representative: '',
     position: '',
+    bankName: '',
+    bankAccount: '',
+    bankBranch: '',
     source: 'Facebook',
-    assignedStaffId: 'staff_sale_1',
+    assignedStaffId: '',
     notes: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Set default assignedStaffId to current user
+  useEffect(() => {
+    if (user?.id) {
+      setFormData(prev => ({
+        ...prev,
+        assignedStaffId: user.id
+      }));
+    }
+  }, [user]);
+
   const isCorporate = formData.type === CustomerType.CORPORATE;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.phone) {
+    // Validation - All fields are required
+    if (!formData.name || !formData.phone || !formData.email || !formData.address || 
+        !formData.bankName || !formData.bankAccount || !formData.bankBranch || !formData.source) {
       setSubmitError('Vui lòng nhập đầy đủ thông tin bắt buộc');
       return;
+    }
+
+    // Validate legal information based on type
+    if (isCorporate) {
+      if (!formData.taxCode || !formData.representative) {
+        setSubmitError('Vui lòng nhập đầy đủ thông tin doanh nghiệp');
+        return;
+      }
+    }
+
+    if (!isCorporate) {
+      if (!formData.idCard || !formData.idCardIssueDate || !formData.idCardIssuePlace || 
+          !formData.dateOfBirth || !formData.gender) {
+        setSubmitError('Vui lòng nhập đầy đủ thông tin cá nhân');
+        return;
+      }
     }
 
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      // TODO: Save to Supabase
-      const customerData = {
-        ...formData,
-        id: 'cust_' + Math.random().toString(36).substr(2, 9),
-        code: 'KH-' + Math.floor(1000 + Math.random() * 9000),
+      // Prepare customer data in database format (snake_case)
+      const customerData: any = {
+        type: formData.type,
+        name: formData.name,
+        phone: formData.phone || null,
+        email: formData.email || null,
+        address: formData.address || null,
+        source: formData.source || null,
+        assigned_staff_id: formData.assignedStaffId || null,
         status: CustomerStatus.PROSPECT,
-        createdAt: new Date().toISOString(),
-        totalContracts: 0,
-        totalPurchased: 0,
-        totalRevenue: 0,
+        notes: formData.notes || null,
+        // Personal information (for INDIVIDUAL)
+        date_of_birth: formData.dateOfBirth || null,
+        gender: formData.gender || null,
+        id_card: !isCorporate ? (formData.idCard || null) : null,
+        id_card_issue_date: !isCorporate ? (formData.idCardIssueDate || null) : null,
+        id_card_issue_place: !isCorporate ? (formData.idCardIssuePlace || null) : null,
+        // Corporate information (for CORPORATE)
+        tax_code: isCorporate ? (formData.taxCode || null) : null,
+        company_name: isCorporate ? (formData.companyName || null) : null,
+        representative: isCorporate ? (formData.representative || null) : null,
+        position: isCorporate ? (formData.position || null) : null,
+        // Bank information (for both INDIVIDUAL and CORPORATE)
+        bank_name: formData.bankName || null,
+        bank_account: formData.bankAccount || null,
+        bank_branch: formData.bankBranch || null,
+        // Statistics (will be auto-calculated by triggers, defaults to 0)
+        total_contracts: 0,
+        total_purchased: 0,
+        total_revenue: 0,
         debt: 0
       };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ customer: customerData })
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || 'Lỗi lưu dữ liệu khách hàng');
+      }
+
+      // Gửi thông báo cho ADMIN, DIRECTOR và OPERATIONS_DIRECTOR khi có khách hàng mới
+      try {
+        const customerTypeText = formData.type === CustomerType.INDIVIDUAL ? 'Cá nhân' : 'Doanh nghiệp';
+        const customerName = formData.type === CustomerType.INDIVIDUAL 
+          ? formData.name 
+          : formData.companyName || formData.name;
+        
+        const message = 
+          `Khách hàng mới đã được thêm vào hệ thống:\n` +
+          `• Tên: ${customerName}\n` +
+          `• Loại: ${customerTypeText}\n` +
+          `${formData.phone ? `• SĐT: ${formData.phone}\n` : ''}` +
+          `${formData.email ? `• Email: ${formData.email}\n` : ''}` +
+          `${formData.source ? `• Nguồn: ${formData.source}\n` : ''}` +
+          `• Trạng thái: Tiềm năng`;
+
+        await notificationService.createNotificationForRoles(
+          ['ADMIN', 'DIRECTOR', 'OPERATIONS_DIRECTOR'],
+          {
+            title: `Khách hàng mới: ${customerName}`,
+            message: message,
+            type: 'INFO',
+            referenceType: 'CUSTOMER',
+            referenceId: result.customer?.id,
+            actionUrl: `/crm`,
+            metadata: {
+              customerId: result.customer?.id,
+              customerName: customerName,
+              customerType: formData.type,
+              customerPhone: formData.phone,
+              customerEmail: formData.email,
+              source: formData.source,
+              createdBy: user?.id,
+              createdByName: user?.full_name || user?.username
+            }
+          }
+        );
+      } catch (notificationError) {
+        // Log lỗi nhưng không chặn việc tạo khách hàng
+        console.error('Error sending notification:', notificationError);
+      }
 
       // Success - redirect to CRM page
       router.push('/crm');
@@ -160,10 +267,11 @@ export const CustomerFormPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hòm thư điện tử (Email)</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hòm thư điện tử (Email) *</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                   <input 
+                    required
                     type="email" 
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
                     value={formData.email}
@@ -173,10 +281,11 @@ export const CustomerFormPage: React.FC = () => {
               </div>
 
               <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Địa chỉ đăng ký</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Địa chỉ đăng ký *</label>
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                   <input 
+                    required
                     type="text" 
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
                     value={formData.address}
@@ -185,13 +294,65 @@ export const CustomerFormPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Thông tin ngân hàng */}
+              <div className="md:col-span-2 space-y-4 pt-2">
+                <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Thông tin ngân hàng</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tên ngân hàng *</label>
+                    <div className="relative">
+                      <Landmark className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                      <input 
+                        required
+                        type="text" 
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
+                        placeholder="Ví dụ: Techcombank, Vietcombank..."
+                        value={formData.bankName}
+                        onChange={e => setFormData({...formData, bankName: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Số tài khoản *</label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                      <input 
+                        required
+                        type="text" 
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
+                        placeholder="Nhập số tài khoản"
+                        value={formData.bankAccount}
+                        onChange={e => setFormData({...formData, bankAccount: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chi nhánh *</label>
+                    <div className="relative">
+                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                      <input 
+                        required
+                        type="text" 
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
+                        placeholder="Ví dụ: Chi nhánh Cần Thơ"
+                        value={formData.bankBranch}
+                        onChange={e => setFormData({...formData, bankBranch: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {!isCorporate && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngày tháng năm sinh</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngày tháng năm sinh *</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                       <input 
+                        required
                         type="date" 
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
                         value={formData.dateOfBirth}
@@ -201,10 +362,11 @@ export const CustomerFormPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giới tính</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giới tính *</label>
                     <div className="relative">
                       <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                       <select 
+                        required
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 appearance-none"
                         value={formData.gender}
                         onChange={e => setFormData({...formData, gender: e.target.value})}
@@ -212,7 +374,6 @@ export const CustomerFormPage: React.FC = () => {
                         <option value="">-- Chọn giới tính --</option>
                         <option value="Nam">Nam</option>
                         <option value="Nữ">Nữ</option>
-                        <option value="Khác">Khác</option>
                       </select>
                     </div>
                   </div>
@@ -243,8 +404,9 @@ export const CustomerFormPage: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Người đại diện pháp luật</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Người đại diện pháp luật *</label>
                     <input 
+                      required
                       type="text" 
                       className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold"
                       value={formData.representative}
@@ -268,10 +430,11 @@ export const CustomerFormPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngày cấp CCCD</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngày cấp CCCD *</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                       <input 
+                        required
                         type="date" 
                         className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none"
                         value={formData.idCardIssueDate}
@@ -280,8 +443,9 @@ export const CustomerFormPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nơi cấp</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nơi cấp *</label>
                     <select 
+                      required
                       className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none"
                       value={formData.idCardIssuePlace}
                       onChange={e => setFormData({...formData, idCardIssuePlace: e.target.value})}
@@ -295,8 +459,9 @@ export const CustomerFormPage: React.FC = () => {
               )}
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nguồn khách hàng</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nguồn khách hàng *</label>
                 <select 
+                  required
                   className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none"
                   value={formData.source}
                   onChange={e => setFormData({...formData, source: e.target.value})}
@@ -311,14 +476,15 @@ export const CustomerFormPage: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">NV Sales phụ trách</label>
-                <select 
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none"
-                  value={formData.assignedStaffId}
-                  onChange={e => setFormData({...formData, assignedStaffId: e.target.value})}
-                >
-                  <option value="staff_sale_1">Nguyễn Thị Sale 1</option>
-                  <option value="staff_admin">Quản lý trực tiếp</option>
-                </select>
+                <div className="relative">
+                  <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                  <input 
+                    type="text"
+                    readOnly
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none cursor-not-allowed opacity-75"
+                    value={user?.full_name || 'Đang tải...'}
+                  />
+                </div>
               </div>
             </div>
           </section>
