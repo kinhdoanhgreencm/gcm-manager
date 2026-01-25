@@ -26,6 +26,7 @@ export const ProfilePage: React.FC = () => {
   const [personalInfoForm, setPersonalInfoForm] = useState({
     full_name: '',
     phone: '',
+    email: '',
     date_of_birth: '',
     id_card: '',
     id_card_issue_date: '',
@@ -292,6 +293,7 @@ export const ProfilePage: React.FC = () => {
       setPersonalInfoForm({
         full_name: user.full_name || '',
         phone: user.phone || '',
+        email: user.email || '',
         date_of_birth: user.date_of_birth || '',
         id_card: user.id_card || '',
         id_card_issue_date: user.id_card_issue_date || '',
@@ -418,6 +420,7 @@ export const ProfilePage: React.FC = () => {
       const updateData: any = {
         full_name: personalInfoForm.full_name.trim(),
         phone: toNullIfEmpty(personalInfoForm.phone?.trim()),
+        email: personalInfoForm.email.trim(),
         date_of_birth: toNullIfEmpty(personalInfoForm.date_of_birth),
         id_card: toNullIfEmpty(personalInfoForm.id_card?.trim()),
         id_card_issue_date: toNullIfEmpty(personalInfoForm.id_card_issue_date),
@@ -580,9 +583,22 @@ export const ProfilePage: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</label>
-                      <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900">
-                        {user.email}
-                      </div>
+                      {isEditingPersonalInfo ? (
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                          <input
+                            type="email"
+                            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                            value={personalInfoForm.email}
+                            onChange={e => setPersonalInfoForm({...personalInfoForm, email: e.target.value})}
+                            placeholder="Nhập email"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900">
+                          {user.email}
+                        </div>
+                      )}
                     </div>
                   </div>
 
