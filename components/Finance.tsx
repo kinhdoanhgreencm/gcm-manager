@@ -470,7 +470,7 @@ export const Finance: React.FC = () => {
                 // Get current user ID
                 const getCurrentUser = () => {
                   try {
-                    const storedUser = localStorage.getItem('user');
+                    const storedUser = sessionStorage.getItem('user');
                     if (storedUser) {
                       const user = JSON.parse(storedUser);
                       return user.id;

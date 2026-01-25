@@ -765,10 +765,10 @@ export const ContractFormPage: React.FC = () => {
   const handleNext = () => setStep(s => Math.min(s + 1, 4));
   const handleBack = () => setStep(s => Math.max(s - 1, 1));
 
-  // Lấy user hiện tại từ localStorage
+  // Lấy user hiện tại từ sessionStorage
   const getCurrentUser = () => {
     try {
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
         return user.id;

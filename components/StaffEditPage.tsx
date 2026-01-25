@@ -810,7 +810,7 @@ export const StaffEditPage: React.FC = () => {
           const refreshResponse = await fetch(`/api/auth/user?id=${user.id}`);
           if (refreshResponse.ok) {
             const refreshData = await refreshResponse.json();
-            localStorage.setItem('user', JSON.stringify(refreshData.user));
+            sessionStorage.setItem('user', JSON.stringify(refreshData.user));
             setTimeout(() => {
               window.location.reload();
             }, 500);

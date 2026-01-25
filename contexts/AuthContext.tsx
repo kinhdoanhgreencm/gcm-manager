@@ -50,17 +50,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Kiểm tra session từ localStorage
-    const storedUser = localStorage.getItem('user');
+    // Kiểm tra session từ sessionStorage (tự động xóa khi tab đóng)
+    const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
         console.error('Error parsing stored user:', error);
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
       }
     }
     setLoading(false);
+  }, []);
+
+  // Xóa session khi tab đóng để đảm bảo phải đăng nhập lại khi mở tab mới
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Xóa session khi tab đóng
+      sessionStorage.removeItem('user');
+    };
+
+    const handleVisibilityChange = () => {
+      // Nếu tab bị ẩn (có thể do chuyển tab hoặc minimize), không xóa session
+      // Chỉ xóa khi tab thực sự đóng (beforeunload)
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Idle timeout: tự động logout sau 15 phút không hoạt động
@@ -74,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         // Tự động logout khi hết thời gian idle
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
         setUser(null);
         router.push('/login');
       }, IDLE_TIMEOUT);
@@ -123,8 +144,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: { message: data.error || 'Đăng nhập thất bại' } };
       }
 
-      // Lưu user vào localStorage
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // Lưu user vào sessionStorage (tự động xóa khi tab đóng)
+      sessionStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
 
       return { error: null };
@@ -134,13 +155,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
     setUser(null);
     router.push('/login');
   };
 
   const refreshUser = async () => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
@@ -148,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await fetch(`/api/auth/user?id=${userData.id}`);
         if (response.ok) {
           const data = await response.json();
-          localStorage.setItem('user', JSON.stringify(data.user));
+          sessionStorage.setItem('user', JSON.stringify(data.user));
           setUser(data.user);
         }
       } catch (error) {

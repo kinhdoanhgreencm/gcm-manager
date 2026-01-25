@@ -518,7 +518,7 @@ export const TransactionFormPage: React.FC = () => {
 
     try {
       // Get current user ID
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
       let creatorId = null;
       if (storedUser) {
         try {

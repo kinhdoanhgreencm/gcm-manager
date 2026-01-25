@@ -354,7 +354,7 @@ export const EditVehiclePage: React.FC = () => {
     try {
       setUploadProgress('Đang upload ảnh và cập nhật thông tin xe...');
 
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
       let updatedBy = null;
       if (storedUser) {
         try {

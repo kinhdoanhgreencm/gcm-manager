@@ -162,7 +162,7 @@ export const notificationService = {
     try {
       let currentUserId = userId;
       if (!currentUserId && typeof window !== 'undefined') {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = sessionStorage.getItem('user');
         if (storedUser) {
           try {
             const parsed = JSON.parse(storedUser);

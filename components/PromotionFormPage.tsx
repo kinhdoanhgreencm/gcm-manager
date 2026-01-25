@@ -174,7 +174,7 @@ export const PromotionFormPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
       let creatorId = null;
       if (storedUser) {
         try {

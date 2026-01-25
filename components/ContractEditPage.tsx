@@ -836,7 +836,7 @@ export const ContractEditPage: React.FC<ContractEditPageProps> = ({ contractId }
   // Lấy user hiện tại từ localStorage
   const getCurrentUser = () => {
     try {
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
         return user.id;

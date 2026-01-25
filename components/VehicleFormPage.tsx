@@ -370,7 +370,7 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
     try {
       setUploadProgress('Đang upload ảnh và lưu thông tin xe...');
 
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
       let createdBy = null;
       if (storedUser) {
         try {
