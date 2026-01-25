@@ -50,7 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Kiểm tra session từ sessionStorage (tự động xóa khi tab đóng)
+    // Kiểm tra session từ sessionStorage
+    // sessionStorage tự động giữ lại khi refresh (F5) và tự động xóa khi tab đóng
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
@@ -61,27 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     setLoading(false);
-  }, []);
-
-  // Xóa session khi tab đóng để đảm bảo phải đăng nhập lại khi mở tab mới
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      // Xóa session khi tab đóng
-      sessionStorage.removeItem('user');
-    };
-
-    const handleVisibilityChange = () => {
-      // Nếu tab bị ẩn (có thể do chuyển tab hoặc minimize), không xóa session
-      // Chỉ xóa khi tab thực sự đóng (beforeunload)
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, []);
 
   // Idle timeout: tự động logout sau 15 phút không hoạt động
@@ -144,7 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: { message: data.error || 'Đăng nhập thất bại' } };
       }
 
-      // Lưu user vào sessionStorage (tự động xóa khi tab đóng)
+      // Lưu user vào sessionStorage
+      // sessionStorage tự động giữ lại khi refresh (F5) và tự động xóa khi tab đóng
       sessionStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
 
