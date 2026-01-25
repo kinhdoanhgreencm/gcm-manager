@@ -32,10 +32,10 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
   // Check if user is inventory staff (cannot input cost and price)
   const isInventoryStaff = user?.role === 'INVENTORY';
   
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  // Get current datetime in ISO format
+  const getCurrentDateTime = (): string => {
+    return new Date().toISOString();
+  };
 
   // Format datetime to "hh:mm dd/mm/yyyy"
   const formatDateTime = (dateString: string): string => {
@@ -51,18 +51,23 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
     
     return `${hours}:${minutes} ${day}/${month}/${year}`;
   };
+  
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Parse "hh:mm dd/mm/yyyy" to ISO string
-  const parseDateTime = (value: string): string => {
+  const parseDateTime = (value: string, currentEntryDate?: string): string => {
     // Remove extra spaces
     const cleaned = value.trim();
-    if (!cleaned) return new Date().toISOString();
+    if (!cleaned) return currentEntryDate || new Date().toISOString();
     
     // Match pattern: hh:mm dd/mm/yyyy
     const match = cleaned.match(/(\d{1,2}):(\d{1,2})\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (!match) {
-      // If partial input, try to keep current date/time
-      return formData.entryDate || new Date().toISOString();
+      // If partial input, return current value to allow continued typing
+      return currentEntryDate || new Date().toISOString();
     }
     
     const [, hours, minutes, day, month, year] = match;
@@ -74,7 +79,7 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
     
     // Validate ranges
     if (hour > 23 || minute > 59 || dayNum > 31 || monthNum > 12 || yearNum < 2000 || yearNum > 2100) {
-      return formData.entryDate || new Date().toISOString();
+      return currentEntryDate || new Date().toISOString();
     }
     
     const date = new Date(
@@ -85,7 +90,7 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
       minute
     );
     
-    if (isNaN(date.getTime())) return formData.entryDate || new Date().toISOString();
+    if (isNaN(date.getTime())) return currentEntryDate || new Date().toISOString();
     return date.toISOString();
   };
 
@@ -94,10 +99,10 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
     let value = e.target.value;
     
     // Remove all non-digit characters except :, /, and spaces
-    value = value.replace(/[^\d:\/\s]/g, '');
+    const cleanedValue = value.replace(/[^\d:\/\s]/g, '');
     
     // Auto-format as user types
-    let digits = value.replace(/[^\d]/g, '');
+    let digits = cleanedValue.replace(/[^\d]/g, '');
     let formatted = '';
     
     // Format: hh:mm dd/mm/yyyy
@@ -123,13 +128,14 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
       formatted = formatted.slice(0, 16);
     }
     
-    const parsed = parseDateTime(formatted);
-    setFormData({...formData, entryDate: parsed});
-  };
-
-  // Get current datetime in ISO format
-  const getCurrentDateTime = (): string => {
-    return new Date().toISOString();
+    // Update display value immediately
+    setEntryDateDisplay(formatted || value);
+    
+    // Try to parse and update formData if we have a complete date
+    if (formatted.length >= 16) {
+      const parsed = parseDateTime(formatted, formData.entryDate);
+      setFormData({...formData, entryDate: parsed});
+    }
   };
 
   const [formData, setFormData] = useState({
@@ -156,6 +162,9 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
     notes: '',
     conditionNotes: ''
   });
+  
+  // Separate state for entry date input display value
+  const [entryDateDisplay, setEntryDateDisplay] = useState(formatDateTime(getCurrentDateTime()));
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -829,17 +838,30 @@ export const VehicleFormPage: React.FC<VehicleFormPageProps> = ({ onSave }) => {
                       type="text" 
                       className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-mono h-[46px]"
                       placeholder="hh:mm dd/mm/yyyy"
-                      value={formatDateTime(formData.entryDate)}
+                      value={entryDateDisplay}
                       onChange={handleDateTimeChange}
                       onBlur={e => {
-                        // Ensure format is correct on blur
-                        const currentValue = formatDateTime(formData.entryDate);
-                        if (e.target.value !== currentValue) {
-                          e.target.value = currentValue;
+                        // On blur, ensure we have a valid date
+                        const inputValue = e.target.value.trim();
+                        
+                        // If input is empty or invalid, use current date
+                        if (!inputValue || inputValue.length < 16) {
+                          const now = new Date();
+                          const newDate = now.toISOString();
+                          setFormData({...formData, entryDate: newDate});
+                          setEntryDateDisplay(formatDateTime(newDate));
+                        } else {
+                          // Try to parse and format the input
+                          const parsed = parseDateTime(inputValue, formData.entryDate);
+                          setFormData({...formData, entryDate: parsed});
+                          setEntryDateDisplay(formatDateTime(parsed));
                         }
                       }}
                     />
                   </div>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Nhập giờ và ngày nhập kho (tự động định dạng khi gõ)
+                  </p>
                 </div>
               </div>
             </div>
