@@ -5,6 +5,7 @@ import { ConditionalHeader } from '@/components/ConditionalHeader'
 import { SidebarProvider } from '@/contexts/SidebarContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ReloadProvider } from '@/contexts/ReloadContext'
+import { MobileBlocker } from '@/components/MobileBlocker'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body className={inter.className}>
+        <MobileBlocker />
         <AuthProvider>
           <SidebarProvider>
             <ReloadProvider>
