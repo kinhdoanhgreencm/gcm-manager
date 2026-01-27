@@ -27,7 +27,6 @@ export const Suppliers: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'finance' | 'debt'>('overview');
-  const [paymentMode, setPaymentMode] = useState<'per-vehicle' | 'full'>('per-vehicle');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -242,7 +241,7 @@ export const Suppliers: React.FC = () => {
     };
   }, [selectedSupplier]);
 
-  // Refresh supplier details when switching to finance tab or payment mode
+  // Refresh supplier details when switching to finance tab
   // This ensures data is up-to-date after making payments from DebtManagement or Finance page
   useEffect(() => {
     if (selectedSupplier && activeTab === 'finance') {
@@ -252,7 +251,7 @@ export const Suppliers: React.FC = () => {
       fetchSuppliers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, paymentMode]);
+  }, [activeTab]);
 
   // Refresh data when pathname changes (e.g., returning from DebtManagement or Finance page)
   useEffect(() => {
@@ -559,7 +558,7 @@ export const Suppliers: React.FC = () => {
       <div className="space-y-6 animate-in fade-in duration-300">
         <button 
           onClick={() => setSelectedSupplier(null)}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors"
+          className="flex items-center gap-2 text-white hover:text-white font-bold text-sm transition-colors"
         >
           <ChevronRight size={18} className="rotate-180" /> Quay lại danh sách
         </button>
@@ -788,29 +787,31 @@ export const Suppliers: React.FC = () => {
               </div>
             ) : activeTab === 'finance' && (
               <div className="space-y-4 animate-in slide-in-from-bottom-4">
-                 {/* Payment Mode Tabs */}
-                 <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 w-fit">
-                   <button
-                     onClick={() => setPaymentMode('per-vehicle')}
-                     className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black transition-all ${
-                       paymentMode === 'per-vehicle' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'
-                     }`}
-                   >
-                     <Car size={16} /> Thanh toán theo từng xe
-                   </button>
-                   <button
-                     onClick={() => setPaymentMode('full')}
-                     className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black transition-all ${
-                       paymentMode === 'full' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-500 hover:bg-slate-50'
-                     }`}
-                   >
-                     <DollarSign size={16} /> Thanh toán toàn bộ
-                   </button>
-                 </div>
-
-                 {paymentMode === 'per-vehicle' ? (
-                   /* Thanh toán theo từng xe */
-                   <div className="space-y-4">
+                 {/* Thanh toán - Gộp cả hai phần */}
+                 <div className="space-y-4">
+                   {/* Nút thanh toán toàn bộ */}
+                   {canViewFinancialInfo && selectedSupplier.debt > 0 && canViewPaymentHistory && (
+                     <div className="bg-slate-900 text-white p-6 rounded-3xl flex justify-between items-center relative overflow-hidden">
+                       <div className="relative z-10">
+                         <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Tổng nợ cần thanh toán</p>
+                         <h4 className="text-2xl font-black text-rose-400 mt-1">{formatVND(selectedSupplier.debt)}</h4>
+                       </div>
+                       {hasPendingPayment ? (
+                         <div className="relative z-10 px-6 py-2.5 bg-slate-700 text-slate-300 rounded-2xl text-xs font-black flex items-center gap-2 cursor-not-allowed">
+                           <CheckCircle2 size={16} /> Đã tạo phiếu chi (Đang chờ duyệt)
+                         </div>
+                       ) : (
+                         <button
+                           onClick={() => handleCreateFullPayment()}
+                           className="relative z-10 px-6 py-2.5 bg-white text-slate-900 rounded-2xl text-xs font-black hover:bg-slate-100 transition-all flex items-center gap-2"
+                         >
+                           <Plus size={16} /> Thanh toán toàn bộ
+                         </button>
+                       )}
+                       <DollarSign className="absolute -bottom-8 -right-8 text-white/5" size={150} />
+                     </div>
+                   )}
+                     
                      <div className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-sm">
                        <table className="w-full text-left">
                          <thead className="bg-slate-50 border-b border-slate-100">
@@ -823,12 +824,15 @@ export const Suppliers: React.FC = () => {
                                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Còn lại</th>
                                </>
                              )}
+                             {canViewPaymentHistory && (
+                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Hành động</th>
+                             )}
                            </tr>
                          </thead>
                          <tbody className="divide-y divide-slate-50">
                            {loadingDetails ? (
                              <tr>
-                               <td colSpan={canViewFinancialInfo ? 4 : 1} className="py-20 text-center">
+                               <td colSpan={canViewFinancialInfo ? (canViewPaymentHistory ? 5 : 4) : (canViewPaymentHistory ? 2 : 1)} className="py-20 text-center">
                                  <Loader2 className="animate-spin mx-auto text-slate-400" size={32} />
                                  <p className="text-sm text-slate-500 mt-4">Đang tải dữ liệu...</p>
                                </td>
@@ -900,12 +904,32 @@ export const Suppliers: React.FC = () => {
                                        </td>
                                      </>
                                    )}
+                                   {canViewPaymentHistory && (
+                                     <td className="px-6 py-4 text-center">
+                                       {hasVehiclePending ? (
+                                         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-xl text-[10px] font-black">
+                                           <Clock size={12} /> Đang chờ duyệt
+                                         </div>
+                                       ) : remainingAmount > 0 ? (
+                                         <button
+                                           onClick={() => handleCreatePaymentForVehicle(v, remainingAmount)}
+                                           className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all flex items-center gap-2 mx-auto"
+                                         >
+                                           <CreditCard size={14} /> Thanh toán
+                                         </button>
+                                       ) : (
+                                         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black">
+                                           <CheckCircle2 size={12} /> Đã thanh toán
+                                         </div>
+                                       )}
+                                     </td>
+                                   )}
                                  </tr>
                                );
                              })
                            ) : (
                              <tr>
-                               <td colSpan={canViewFinancialInfo ? 4 : 1} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">
+                               <td colSpan={canViewFinancialInfo ? (canViewPaymentHistory ? 5 : 4) : (canViewPaymentHistory ? 2 : 1)} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">
                                  Chưa có xe nào từ nguồn này
                                </td>
                              </tr>
@@ -948,78 +972,7 @@ export const Suppliers: React.FC = () => {
                          </table>
                        </div>
                      )}
-                   </div>
-                 ) : (
-                   /* Thanh toán toàn bộ */
-                   <div className="space-y-4">
-                     {canViewFinancialInfo && (
-                       <div className="bg-slate-900 text-white p-8 rounded-3xl flex justify-between items-center relative overflow-hidden">
-                         <div className="relative z-10">
-                           {selectedSupplier.debt > 0 ? (
-                             <>
-                               <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Tổng nợ cần thanh toán</p>
-                               <h4 className="text-3xl font-black text-rose-400">{formatVND(selectedSupplier.debt)}</h4>
-                             </>
-                           ) : (
-                             <>
-                               <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Tổng vốn đã thanh toán thực tế</p>
-                               <h4 className="text-3xl font-black text-emerald-400">{formatVND(selectedSupplier.totalImportValue - selectedSupplier.debt)}</h4>
-                             </>
-                           )}
-                         </div>
-                         {selectedSupplier.debt > 0 && canViewPaymentHistory && (
-                           hasPendingPayment ? (
-                             <div className="relative z-10 px-8 py-3 bg-slate-700 text-slate-300 rounded-2xl text-xs font-black flex items-center gap-2 cursor-not-allowed">
-                               <CheckCircle2 size={16} /> Đã tạo phiếu chi (Đang chờ duyệt)
-                             </div>
-                           ) : (
-                             <button
-                               onClick={() => handleCreateFullPayment()}
-                               className="relative z-10 px-8 py-3 bg-white text-slate-900 rounded-2xl text-xs font-black hover:bg-slate-100 transition-all flex items-center gap-2"
-                             >
-                               <Plus size={16} /> Tạo phiếu chi (Trả nợ NCC)
-                             </button>
-                           )
-                         )}
-                         <DollarSign className="absolute -bottom-10 -right-10 text-white/5" size={200} />
-                       </div>
-                     )}
-
-                     {loadingDetails ? (
-                       <div className="bg-white rounded-[40px] border border-slate-200 p-20 text-center">
-                         <Loader2 className="animate-spin mx-auto text-slate-400" size={32} />
-                         <p className="text-sm text-slate-500 mt-4">Đang tải dữ liệu...</p>
-                       </div>
-                     ) : (
-                       <div className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-sm">
-                         <table className="w-full text-left">
-                           <thead className="bg-slate-50 border-b border-slate-100">
-                             <tr>
-                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngày phát sinh</th>
-                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nội dung thanh toán</th>
-                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Số tiền chi</th>
-                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Trạng thái</th>
-                             </tr>
-                           </thead>
-                           <tbody className="divide-y divide-slate-50">
-                             {supplierTransactions.length > 0 ? supplierTransactions.map(t => (
-                               <tr key={t.id} className="hover:bg-slate-50">
-                                 <td className="px-6 py-4 text-xs font-bold text-slate-600">{new Date(t.date).toLocaleDateString('vi-VN')}</td>
-                                 <td className="px-6 py-4 text-xs font-medium">{t.description}</td>
-                                 <td className="px-6 py-4 text-right text-sm font-black text-rose-600">-{formatVND(t.amount)}</td>
-                                 <td className="px-6 py-4 text-center">
-                                   <CheckCircle2 size={16} className="text-emerald-500 mx-auto" />
-                                 </td>
-                               </tr>
-                             )) : (
-                               <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">Chưa có dữ liệu thanh toán</td></tr>
-                             )}
-                           </tbody>
-                         </table>
-                       </div>
-                     )}
-                   </div>
-                 )}
+                     </div>
               </div>
             )}
 

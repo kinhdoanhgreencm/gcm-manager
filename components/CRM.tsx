@@ -800,7 +800,7 @@ export const CRM: React.FC = () => {
         <div className="flex items-center justify-between">
           <button 
             onClick={() => setSelectedCustomer(null)}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors"
+            className="flex items-center gap-2 text-white hover:text-white font-bold text-sm transition-colors"
           >
             <ChevronRight size={18} className="rotate-180" /> Quay lại danh sách
           </button>

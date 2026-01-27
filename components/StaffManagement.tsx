@@ -471,7 +471,7 @@ export const StaffManagement: React.FC = () => {
       <div className="space-y-6 animate-in fade-in duration-300">
         <button 
           onClick={() => setSelectedStaff(null)}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors"
+          className="flex items-center gap-2 text-white hover:text-white font-bold text-sm transition-colors"
         >
           <ArrowLeft size={18} /> Quay lại danh sách
         </button>

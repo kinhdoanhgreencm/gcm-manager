@@ -1134,7 +1134,7 @@ export const Inventory: React.FC = () => {
                       <div className="min-w-0 flex-1">
                         <h4 className="font-black text-slate-900 text-sm md:text-base truncate">{v.make} {v.model} {version ? version : ''}</h4>
                         <div className="flex items-center gap-2 md:gap-3 mt-1 flex-wrap">
-                          <p className="text-[10px] font-mono text-slate-400 font-bold tracking-tight uppercase truncate">{v.vin}</p>
+                          <p className="text-sm md:text-base font-mono text-slate-900 font-black tracking-tight uppercase truncate bg-blue-50 px-2 py-1 rounded-lg border border-blue-200">{v.vin}</p>
                           {engineNumber && (
                             <>
                               <span className="text-[10px] text-slate-300 hidden md:inline">•</span>
