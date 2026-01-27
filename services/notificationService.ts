@@ -232,20 +232,55 @@ export const notificationService = {
    */
   async getNotifications(userId: string, limit: number = 20) {
     try {
+      if (!userId) {
+        console.warn('getNotifications: userId is required');
+        return [];
+      }
+
       const response = await fetch(`/api/notifications?userId=${encodeURIComponent(userId)}&limit=${limit}`, {
-        cache: 'no-store'
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+        credentials: 'same-origin'
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch notifications');
+        let errorMessage = 'Failed to fetch notifications';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        console.error('Error fetching notifications:', errorMessage, response.status);
+        // Return empty array instead of throwing to prevent app breakage
+        return [];
       }
 
       const result = await response.json();
       return result.notifications || [];
-    } catch (error) {
+    } catch (error: any) {
+      // Handle network errors (Failed to fetch)
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.error('Network error fetching notifications. This might be due to:', {
+          message: error.message,
+          userId,
+          possibleCauses: [
+            'API route not available',
+            'Network connectivity issue',
+            'Server not running',
+            'CORS issue'
+          ]
+        });
+        // Return empty array to prevent app breakage
+        return [];
+      }
       console.error('Error fetching notifications:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent app breakage
+      return [];
     }
   },
 

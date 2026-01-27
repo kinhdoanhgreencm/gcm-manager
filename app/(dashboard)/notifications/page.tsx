@@ -122,8 +122,11 @@ export default function NotificationsPage() {
       }
 
       setNotifications(filtered);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+    } catch (error: any) {
+      // Error is already handled in notificationService, but log here for debugging
+      console.error('Error in notifications page fetchNotifications:', error);
+      // Set empty array to prevent UI issues
+      setNotifications([]);
     } finally {
       setIsLoading(false);
     }

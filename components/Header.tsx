@@ -79,8 +79,12 @@ export const Header: React.FC = () => {
             .map((n: any) => n.id as string)
         );
         setReadNotifications(readIds);
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
+      } catch (error: any) {
+        // Error is already handled in notificationService, but log here for debugging
+        console.error('Error in Header fetchNotifications:', error);
+        // Set empty array to prevent UI issues
+        setNotifications([]);
+        setReadNotifications(new Set());
       } finally {
         setIsLoadingNotifications(false);
       }
@@ -175,15 +179,20 @@ export const Header: React.FC = () => {
       
       // Sau khi API thành công, fetch lại để đảm bảo đồng bộ với database
       // (Có thể bỏ qua nếu real-time subscription hoạt động tốt)
-      const data = await notificationService.getNotifications(user.id, 20);
-      if (data) {
-        setNotifications(data);
-        const readIds = new Set<string>(
-          data
-            .filter((n: any) => n.is_read === true)
-            .map((n: any) => n.id as string)
-        );
-        setReadNotifications(readIds);
+      try {
+        const data = await notificationService.getNotifications(user.id, 20);
+        if (data && data.length >= 0) {
+          setNotifications(data);
+          const readIds = new Set<string>(
+            data
+              .filter((n: any) => n.is_read === true)
+              .map((n: any) => n.id as string)
+          );
+          setReadNotifications(readIds);
+        }
+      } catch (fetchError) {
+        // If refetch fails, keep the optimistic update
+        console.warn('Failed to refetch notifications after mark as read, keeping optimistic update');
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
