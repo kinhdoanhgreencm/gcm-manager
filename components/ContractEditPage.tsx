@@ -14,9 +14,7 @@ import {
 import { VehicleStatus, TransactionCategory, Customer, CustomerType, Vehicle } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserAndSuperiors, getAllSubordinates } from '@/utils/userHierarchy';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const supabase = null as any;
+import { supabase } from '@/services/supabaseClient';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const updateVehicleStatusOnContractDeletedByVehicleId = async (_vehicleId: string) => {};
 

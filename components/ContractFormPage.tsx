@@ -14,9 +14,7 @@ import {
 import { VehicleStatus, TransactionCategory, Customer, CustomerType, Vehicle } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasAnyPermission } from '@/utils/permissions';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const supabase = null as any;
+import { supabase } from '@/services/supabaseClient';
 
 export const ContractFormPage: React.FC = () => {
   const router = useRouter();
