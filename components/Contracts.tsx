@@ -1334,6 +1334,11 @@ export const Contracts: React.FC = () => {
                                   Mã xe: <span className="font-black">{vehicle.code}</span>
                                 </p>
                               )}
+                              {vehicle.vin && (
+                                <p className="text-[11px] text-slate-500 font-bold mt-0.5">
+                                  Số khung: <span className="font-black">{vehicle.vin}</span>
+                                </p>
+                              )}
                             </div>
                           </div>
                           <div className="text-right">

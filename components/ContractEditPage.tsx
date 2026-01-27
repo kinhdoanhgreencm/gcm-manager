@@ -590,6 +590,34 @@ export const ContractEditPage: React.FC<ContractEditPageProps> = ({ contractId }
     }
   }, [customers, formData.customerName, formData.customerPhone]);
 
+  // Lọc các xe trùng lặp - chỉ hiển thị 1 xe cho mỗi nhóm giống nhau (cùng model, version, year, color, interior_color)
+  const uniqueVehicles = useMemo(() => {
+    const seen = new Map<string, { vehicle: Vehicle; raw: any }>();
+    
+    vehicles.forEach((v) => {
+      const raw = vehiclesRawData.find(r => r.id === v.id);
+      // Tạo key duy nhất dựa trên các thuộc tính
+      const key = [
+        v.model || '',
+        raw?.version || '',
+        v.year || '',
+        v.color || '',
+        raw?.interior_color || ''
+      ].join('|');
+      
+      // Chỉ lưu xe đầu tiên trong mỗi nhóm
+      if (!seen.has(key)) {
+        seen.set(key, { vehicle: v, raw: raw || null });
+      }
+    });
+    
+    const uniqueList = Array.from(seen.values());
+    return {
+      vehicles: uniqueList.map(item => item.vehicle),
+      rawData: uniqueList.map(item => item.raw).filter(r => r !== null)
+    };
+  }, [vehicles, vehiclesRawData]);
+
   const selectedVehicle = useMemo(() => 
     vehicles.find(v => v.id === formData.vehicleId), 
     [formData.vehicleId, vehicles]
@@ -1547,8 +1575,8 @@ export const ContractEditPage: React.FC<ContractEditPageProps> = ({ contractId }
                     }}
                   >
                     <option value="">-- Tìm kiếm mẫu xe theo Model / màu / phiên bản --</option>
-                    {vehicles.map(v => {
-                      const rawData = vehiclesRawData.find(r => r.id === v.id);
+                    {uniqueVehicles.vehicles.map(v => {
+                      const rawData = uniqueVehicles.rawData.find(r => r.id === v.id);
                       const parts = [];
                       if (v.model) parts.push(`Model xe: ${v.model}`);
                       if (rawData?.version) parts.push(`Phiên bản: ${rawData.version}`);
