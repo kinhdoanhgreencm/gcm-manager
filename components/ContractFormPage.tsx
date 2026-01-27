@@ -1891,19 +1891,13 @@ export const ContractFormPage: React.FC = () => {
                                           const newInstallments = [...formData.installments];
                                           newInstallments[index].amount = numValue;
                                           
-                                          // Nếu đang nhập lần thanh toán đầu tiên (index 0), tự động tính lần thứ 2 (index 1) và lần thứ 3 (index 2)
-                                          // Input[1] = (totalAmount * 30%) - Input[0]
-                                          // Input[2] = totalAmount - Input[0] - Input[1] = totalAmount - (totalAmount * 30%) = totalAmount * 70%
-                                          if (index === 0 && newInstallments.length > 1) {
-                                            const thirtyPercent = totalAmount * 0.3;
-                                            const secondAmount = thirtyPercent - numValue;
-                                            newInstallments[1].amount = Math.max(0, secondAmount);
-                                            
-                                            // Tính đợt thanh toán lần 2 (index 2) = phần còn lại sau khi trừ 30%
-                                            if (newInstallments.length > 2) {
-                                              const remainingAmount = totalAmount - numValue - Math.max(0, secondAmount);
-                                              newInstallments[2].amount = Math.max(0, remainingAmount);
-                                            }
+                                          // Khi nhập lần thanh toán thứ 1 (index 0) hoặc thứ 2 (index 1),
+                                          // tự động tính lần thanh toán thứ 3 (index 2) = tổng giá trị - lần 1 - lần 2
+                                          if ((index === 0 || index === 1) && newInstallments.length > 2) {
+                                            const firstPayment = index === 0 ? numValue : newInstallments[0].amount;
+                                            const secondPayment = index === 1 ? numValue : newInstallments[1].amount;
+                                            const thirdPayment = totalAmount - firstPayment - secondPayment;
+                                            newInstallments[2].amount = Math.max(0, thirdPayment);
                                           }
                                           
                                           setFormData({...formData, installments: newInstallments});
