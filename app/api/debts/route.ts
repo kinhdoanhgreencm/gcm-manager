@@ -25,7 +25,7 @@ const buildReceivableDebts = async () => {
     .eq('type', 'RECEIVABLE')
     .eq('reference_type', 'CONTRACT')
     .gt('remaining_amount', 0) // Chỉ lấy các công nợ còn lại
-    .order('due_date', { ascending: true, nullsLast: true });
+    .order('due_date', { ascending: true });
 
   if (debtRecordsError) {
     console.error('Error fetching receivable debts from debt_records:', debtRecordsError);
@@ -65,7 +65,7 @@ const buildPayableDebts = async () => {
     .eq('type', 'PAYABLE')
     .eq('reference_type', 'SUPPLIER')
     .gt('remaining_amount', 0) // Chỉ lấy các công nợ còn lại
-    .order('due_date', { ascending: true, nullsLast: true });
+    .order('due_date', { ascending: true });
 
   if (debtRecordsError) {
     console.error('Error fetching payable debts from debt_records:', debtRecordsError);

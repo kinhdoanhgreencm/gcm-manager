@@ -264,21 +264,26 @@ export const notificationService = {
       return result.notifications || [];
     } catch (error: any) {
       // Handle network errors (Failed to fetch)
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        console.error('Network error fetching notifications. This might be due to:', {
-          message: error.message,
-          userId,
-          possibleCauses: [
-            'API route not available',
-            'Network connectivity issue',
-            'Server not running',
-            'CORS issue'
-          ]
+      if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message.includes('fetch'))) {
+        console.warn('Network error fetching notifications:', {
+          errorType: error.name,
+          errorMessage: error.message,
+          userId: userId,
+          url: `/api/notifications?userId=${encodeURIComponent(userId)}&limit=${limit}`,
+          note: 'This is usually a network connectivity issue or the API route is not available. The app will continue with an empty notifications list.'
         });
         // Return empty array to prevent app breakage
         return [];
       }
-      console.error('Error fetching notifications:', error);
+      
+      // Handle other errors
+      console.error('Error fetching notifications:', {
+        errorType: error?.name || 'Unknown',
+        errorMessage: error?.message || 'Unknown error',
+        userId: userId,
+        stack: error?.stack
+      });
+      
       // Return empty array instead of throwing to prevent app breakage
       return [];
     }

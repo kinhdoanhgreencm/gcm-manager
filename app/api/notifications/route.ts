@@ -4,7 +4,17 @@ import { supabase } from './_supabase';
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
-      console.error('Notifications API: Supabase client not initialized');
+      const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const hasAnonKey = !!(process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+      
+      console.error('Notifications API: Supabase client not initialized', {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey,
+        hasAnonKey,
+        message: 'Please check your .env.local file for SUPABASE_URL and SUPABASE keys'
+      });
+      
       return NextResponse.json(
         { error: 'Supabase URL hoặc key chưa được cấu hình.' },
         { status: 500 }

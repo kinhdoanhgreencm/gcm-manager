@@ -80,8 +80,11 @@ export const Header: React.FC = () => {
         );
         setReadNotifications(readIds);
       } catch (error: any) {
-        // Error is already handled in notificationService, but log here for debugging
-        console.error('Error in Header fetchNotifications:', error);
+        // Error is already handled in notificationService (returns empty array)
+        // Only log unexpected errors that weren't handled by the service
+        if (error && error.message && !error.message.includes('Failed to fetch')) {
+          console.error('Unexpected error in Header fetchNotifications:', error);
+        }
         // Set empty array to prevent UI issues
         setNotifications([]);
         setReadNotifications(new Set());

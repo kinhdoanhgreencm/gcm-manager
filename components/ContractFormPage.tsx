@@ -139,11 +139,14 @@ export const ContractFormPage: React.FC = () => {
 
               if (subordinatesError) {
                 console.error('Error fetching subordinate users:', subordinatesError);
-              } else if (subordinates && subordinates.length > 0) {
-                allowedStaffIds = [
-                  ...allowedStaffIds,
-                  ...subordinates.map((s: any) => s.id),
-                ];
+              } else {
+                const validSubordinates = subordinates || [];
+                if (validSubordinates.length > 0) {
+                  allowedStaffIds = [
+                    ...allowedStaffIds,
+                    ...validSubordinates.map((s: any) => s.id),
+                  ];
+                }
               }
             } catch (subErr) {
               console.error('Unexpected error fetching subordinate users:', subErr);
@@ -167,7 +170,7 @@ export const ContractFormPage: React.FC = () => {
 
         if (data) {
           // Transform Supabase data to Customer type
-          const transformedCustomers: Customer[] = data.map((c: any) => ({
+          const transformedCustomers: Customer[] = (data || []).map((c: any) => ({
             id: c.id,
             code: c.code || '',
             type: c.type as CustomerType,
@@ -270,9 +273,9 @@ export const ContractFormPage: React.FC = () => {
         }
 
         if (data) {
-          setVehiclesRawData(data);
+          setVehiclesRawData(data || []);
 
-          const transformed: Vehicle[] = data
+          const transformed: Vehicle[] = (data || [])
             .map((v: any) => ({
               id: v.id,
               code: v.code || undefined,
@@ -353,7 +356,7 @@ export const ContractFormPage: React.FC = () => {
 
         if (data) {
           // Filter promotions that are currently active based on dates
-          const activePromotions = data.filter((promo: any) => {
+          const activePromotions = (data || []).filter((promo: any) => {
             // If no dates, consider it always active
             if (!promo.start_date && !promo.end_date) return true;
             

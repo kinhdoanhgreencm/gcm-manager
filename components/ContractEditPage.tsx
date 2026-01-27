@@ -105,54 +105,6 @@ export const ContractEditPage: React.FC<ContractEditPageProps> = ({ contractId }
 
           setCustomers(transformedCustomers);
         }
-        return;
-
-        const { data, error: fetchError } = await supabase
-          .from('customers')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (fetchError) {
-          console.error('Error fetching customers:', fetchError);
-          return;
-        }
-
-        if (data) {
-          // Transform Supabase data to Customer type
-          const transformedCustomers: Customer[] = data.map((c: any) => ({
-            id: c.id,
-            code: c.code || '',
-            type: c.type as CustomerType,
-            name: c.name || '',
-            phone: c.phone || '',
-            email: c.email || undefined,
-            address: c.address || '',
-            idCard: c.id_card || undefined,
-            taxCode: c.tax_code || undefined,
-            companyName: c.company_name || undefined,
-            representative: c.representative || undefined,
-            position: c.position || undefined,
-            source: c.source || '',
-            assignedStaffId: c.assigned_staff_id || '',
-            status: c.status as any,
-            notes: c.notes || undefined,
-            createdAt: c.created_at || new Date().toISOString(),
-            totalContracts: c.total_contracts || 0,
-            totalPurchased: c.total_purchased || 0,
-            totalRevenue: Number(c.total_revenue) || 0,
-            debt: Number(c.debt) || 0,
-            // Additional fields
-            dateOfBirth: c.date_of_birth || undefined,
-            gender: c.gender || undefined,
-            idCardIssueDate: c.id_card_issue_date || undefined,
-            idCardIssuePlace: c.id_card_issue_place || undefined,
-            bankName: c.bank_name || undefined,
-            bankAccount: c.bank_account || undefined,
-            bankBranch: c.bank_branch || undefined
-          }));
-
-          setCustomers(transformedCustomers);
-        }
       } catch (err: any) {
         console.error('Unexpected error fetching customers:', err);
       }
@@ -245,10 +197,10 @@ export const ContractEditPage: React.FC<ContractEditPageProps> = ({ contractId }
 
         if (data) {
           // Store raw data to access additional fields
-          setVehiclesRawData(data);
+          setVehiclesRawData(data || []);
           
           // Transform Supabase data to Vehicle type
-          const transformedVehicles: Vehicle[] = data
+          const transformedVehicles: Vehicle[] = (data || [])
             .map((v: any) => ({
               id: v.id,
               code: v.code || undefined,
